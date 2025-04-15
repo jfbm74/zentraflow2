@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     "core",
     "tenants",
     "authentication",
+    "test",
 ]
 
 # Configuración del modelo de usuario personalizado
