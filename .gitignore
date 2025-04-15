@@ -1,0 +1,92 @@
+# -------------------------------------
+# Python
+# -------------------------------------
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+
+# Virtualenv
+venv/
+env/
+ENV/
+.venv/
+
+# pip
+pip-log.txt
+pip-delete-this-directory.txt
+
+# -------------------------------------
+# Django
+# -------------------------------------
+*.log
+*.pot
+*.pyc
+*.sqlite3
+db.sqlite3
+media/
+staticfiles/
+local_settings.py
+.env
+*.env
+
+# Django migrations
+**/migrations/*.py
+!**/migrations/__init__.py
+
+# Coverage reports
+htmlcov/
+.coverage
+.tox/
+.nox/
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+
+# Pytest
+.pytest_cache/
+
+# mypy
+.mypy_cache/
+.dmypy.json
+
+# PyCharm / VSCode
+.idea/
+.vscode/
+
+# -------------------------------------
+# macOS
+# -------------------------------------
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Icon files
+Icon?
+._*
+
+# Thumbnails
+._.DS_Store
+.Trashes
+Thumbs.db
+
+# Spotlight
+.Spotlight-V100
+
+# Time Machine
+.TemporaryItems
+.fseventsd
+.Tm* 
+
+# -------------------------------------
+# Misc
+# -------------------------------------
+*.bak
+*.swp
+*.swo
+*.orig
+*.tmp
