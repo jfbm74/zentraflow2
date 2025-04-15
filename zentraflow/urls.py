@@ -12,7 +12,7 @@ urlpatterns = [
     path("api/auth/", include("authentication.api.urls")),
     path("auth/", include("authentication.web.urls")),
     path("dashboard/", DashboardView.as_view(), name="dashboard"),
-    # Redirigir la raíz al dashboard
+    path("configuracion/", include("configuracion.urls")),
     path("", RedirectView.as_view(url="/dashboard/", permanent=False), name="home"),
 ]
 
