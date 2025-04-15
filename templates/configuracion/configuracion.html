@@ -541,28 +541,25 @@
                                     </tr>
                                     <tr>
                                         <td><i class="fas fa-mobile-alt"></i> Safari - iPhone</td>
-                                        <td>190.85.100.50</td>
-                                        <td>Bucaramanga, Colombia</td>
-                                        <td>Hace 10 min</td>
-                                        <td>
-                                            <button class="btn btn-sm btn-danger" title="Cerrar Sesión">
-                                                <i class="fas fa-sign-out-alt"></i>
-                                            </button>
-                                        </td>
+                                        <td>200.14.17.32</td>
+                                        <td>Medellín, Colombia</td>
+                                        <td>Hace 2 horas</td>
+                                        <td><button class="btn btn-sm btn-danger">Cerrar</button></td>
                                     </tr>
                                     <tr>
-                                        <td><i class="fas fa-laptop-code"></i> Edge - Windows</td>
-                                        <td>45.183.22.11</td>
-                                        <td>Medellín, Colombia</td>
-                                        <td>Hace 30 min</td>
-                                        <td>
-                                            <button class="btn btn-sm btn-danger" title="Cerrar Sesión">
-                                                <i class="fas fa-sign-out-alt"></i>
-                                            </button>
-                                        </td>
+                                        <td><i class="fas fa-tablet-alt"></i> Chrome - iPad</td>
+                                        <td>186.84.91.107</td>
+                                        <td>Bogotá, Colombia</td>
+                                        <td>Hace 1 día</td>
+                                        <td><button class="btn btn-sm btn-danger">Cerrar</button></td>
                                     </tr>
                                 </tbody>
                             </table>
+                        </div>
+                        <div class="text-end mt-3">
+                            <button class="btn btn-danger">
+                                <i class="fas fa-power-off"></i> Cerrar Todas las Sesiones
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -570,52 +567,107 @@
         </div>
     </div>
 </div>
+
+<div class="config-footer">
+    <div class="config-footer-content">
+        <p class="last-updated">
+            <i class="fas fa-history"></i> Última actualización: <strong>15/04/2025 09:42:37</strong> por <strong>{{ request.user.full_name }}</strong>
+        </p>
+        <div class="config-actions">
+            <button class="btn btn-light" id="cancelBtn">
+                <i class="fas fa-times"></i> Cancelar
+            </button>
+            <button class="btn btn-primary" id="footerSaveBtn">
+                <i class="fas fa-save"></i> Guardar Cambios
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para editar regla de filtro -->
+<div class="modal fade" id="filterRuleModal" tabindex="-1" aria-labelledby="filterRuleModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="filterRuleModalLabel">Editar Regla de Filtro</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="filterType" class="form-label">Tipo de Filtro</label>
+                    <select class="form-select" id="filterType">
+                        <option value="from">De (Remitente)</option>
+                        <option value="subject">Asunto</option>
+                        <option value="body">Contenido</option>
+                        <option value="has-attachment">Tiene Adjunto</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label for="filterValue" class="form-label">Valor</label>
+                    <input type="text" class="form-control" id="filterValue" placeholder="Ej: *@empresa.com, *GLOSA*">
+                    <div class="form-text">Usa * como comodín para coincidencias parciales</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="saveFilterBtn">Guardar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para agregar rango IP -->
+<div class="modal fade" id="ipRangeModal" tabindex="-1" aria-labelledby="ipRangeModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="ipRangeModalLabel">Agregar Rango IP</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="ipRange" class="form-label">Rango IP (CIDR)</label>
+                    <input type="text" class="form-control" id="ipRange" placeholder="Ej: 192.168.1.0/24">
+                    <div class="form-text">Formato CIDR (ej: 192.168.1.0/24) o IP única (ej: 192.168.1.10)</div>
+                </div>
+                <div class="mb-3">
+                    <label for="ipDescription" class="form-label">Descripción (opcional)</label>
+                    <input type="text" class="form-control" id="ipDescription" placeholder="Ej: Oficina Principal">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="saveIpBtn">Guardar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de confirmación para reautorizar OAuth -->
+<div class="modal fade" id="reauthorizeModal" tabindex="-1" aria-labelledby="reauthorizeModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="reauthorizeModalLabel">Reautorizar OAuth</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle"></i> Esta acción revocará la autorización actual y requerirá que vuelva a realizar el proceso de autorización con Google.
+                </div>
+                <p>¿Está seguro que desea reautorizar el acceso a esta cuenta de correo?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-warning" id="confirmReauthorizeBtn">
+                    <i class="fas fa-sync-alt"></i> Sí, Reautorizar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
-<script>
-// Aquí puedes agregar la lógica JavaScript necesaria
-// Ejemplo: Toggle de campos al cambiar entre OAuth y Cuenta de Servicio
-
-const authMethodSelect = document.getElementById('authMethod');
-const oauthCredentials = document.getElementById('oauthCredentials');
-const serviceCredentials = document.getElementById('serviceCredentials');
-
-authMethodSelect.addEventListener('change', () => {
-    if (authMethodSelect.value === 'oauth') {
-        oauthCredentials.style.display = '';
-        serviceCredentials.style.display = 'none';
-    } else {
-        oauthCredentials.style.display = 'none';
-        serviceCredentials.style.display = '';
-    }
-});
-
-// Toggle password visibility
-const togglePasswordBtns = document.querySelectorAll('.toggle-password');
-togglePasswordBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-        const input = btn.parentElement.querySelector('input');
-        if (input.type === 'password') {
-            input.type = 'text';
-            btn.innerHTML = '<i class="fas fa-eye-slash"></i>';
-        } else {
-            input.type = 'password';
-            btn.innerHTML = '<i class="fas fa-eye"></i>';
-        }
-    });
-});
-
-// Guardar cambios
-const saveConfigBtn = document.getElementById('saveConfigBtn');
-const successAlert = document.getElementById('successAlert');
-
-saveConfigBtn.addEventListener('click', () => {
-    // Lógica para recopilar datos del formulario y enviarlos al backend
-    // Ejemplo de mostrar alerta de éxito
-    successAlert.classList.add('show');
-    successAlert.style.display = 'block';
-});
-</script>
+<script src="{% static 'js/components/configuracion.js' %}"></script>
 {% endblock %}
-
