@@ -1,0 +1,90 @@
+<!-- Sidebar -->
+<aside class="sidebar" id="sidebar">
+    <div class="sidebar-content">
+        <div class="profile-section">
+            <div class="profile-avatar">{{ request.user.first_name|slice:":1" }}</div>
+            <div class="profile-info">
+                <div class="profile-name">{{ request.user.full_name }}</div>
+                <div class="profile-email">{{ request.user.email }}</div>
+            </div>
+        </div>
+
+        <div class="sidebar-divider"></div>
+
+        <div class="sidebar-section-title">PRINCIPAL</div>
+        <ul class="sidebar-menu">
+            <li class="sidebar-menu-item">
+                <a href="{% url 'dashboard' %}" class="sidebar-menu-link {% if active_menu == 'dashboard' %}active{% endif %}">
+                    <i class="fas fa-tachometer-alt sidebar-menu-icon"></i>
+                    <span class="sidebar-menu-text">Dashboard</span>
+                </a>
+            </li>
+            <li class="sidebar-menu-item">
+                <a href="#" class="sidebar-menu-link {% if active_menu == 'bandeja' %}active{% endif %}">
+                    <i class="fas fa-inbox sidebar-menu-icon"></i>
+                    <span class="sidebar-menu-text">Bandeja de Glosas</span>
+                </a>
+            </li>
+        </ul>
+
+        <div class="sidebar-divider"></div>
+
+        <div class="sidebar-section-title">MÓDULOS</div>
+        <ul class="sidebar-menu">
+            <li class="sidebar-menu-item">
+                <a href="#" class="sidebar-menu-link {% if active_menu == 'ingesta' %}active{% endif %}">
+                    <i class="fas fa-envelope sidebar-menu-icon"></i>
+                    <span class="sidebar-menu-text">Ingesta de Correo</span>
+                </a>
+            </li>
+            <li class="sidebar-menu-item">
+                <a href="#" class="sidebar-menu-link {% if active_menu == 'extraccion' %}active{% endif %}">
+                    <i class="fas fa-database sidebar-menu-icon"></i>
+                    <span class="sidebar-menu-text">Extracción de Datos</span>
+                </a>
+            </li>
+            <li class="sidebar-menu-item">
+                <a href="#" class="sidebar-menu-link {% if active_menu == 'flujo' %}active{% endif %}">
+                    <i class="fas fa-sitemap sidebar-menu-icon"></i>
+                    <span class="sidebar-menu-text">Flujo de Trabajo</span>
+                </a>
+            </li>
+            <li class="sidebar-menu-item">
+                <a href="#" class="sidebar-menu-link {% if active_menu == 'pdf' %}active{% endif %}">
+                    <i class="fas fa-file-pdf sidebar-menu-icon"></i>
+                    <span class="sidebar-menu-text">Generación PDF</span>
+                </a>
+            </li>
+            <li class="sidebar-menu-item">
+                <a href="#" class="sidebar-menu-link {% if active_menu == 'reportes' %}active{% endif %}">
+                    <i class="fas fa-chart-bar sidebar-menu-icon"></i>
+                    <span class="sidebar-menu-text">Reportes</span>
+                </a>
+            </li>
+        </ul>
+
+        <div class="sidebar-divider"></div>
+
+        <div class="sidebar-section-title">ADMINISTRACIÓN</div>
+        <ul class="sidebar-menu">
+            <li class="sidebar-menu-item">
+                <a href="#" class="sidebar-menu-link {% if active_menu == 'configuracion' %}active{% endif %}">
+                    <i class="fas fa-cog sidebar-menu-icon"></i>
+                    <span class="sidebar-menu-text">Configuración</span>
+                </a>
+            </li>
+            <li class="sidebar-menu-item">
+                <a href="#" class="sidebar-menu-link {% if active_menu == 'auditoria' %}active{% endif %}">
+                    <i class="fas fa-shield-alt sidebar-menu-icon"></i>
+                    <span class="sidebar-menu-text">Auditoría</span>
+                </a>
+            </li>
+            <li class="sidebar-menu-item">
+                <a href="{% url 'logout' %}" class="sidebar-menu-link logout-link">
+                    <i class="fas fa-sign-out-alt sidebar-menu-icon"></i>
+                    <span class="sidebar-menu-text">Cerrar Sesión</span>
+                </a>
+            </li>
+        </ul>
+    </div>
+</aside>
