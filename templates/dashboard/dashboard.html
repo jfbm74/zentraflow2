@@ -1,10 +1,218 @@
-<!-- In templates/dashboard/dashboard.html -->
-{% extends "base.html" %}
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}ZentraFlow - Panel Principal{% endblock %}
 
 {% block content %}
-<div class="dashboard-container">
-    <h1>Welcome to Your Dashboard</h1>
-    <p>Hello, {{ request.user.username }}! This is your dashboard.</p>
-    <!-- Add your dashboard content here -->
+<div class="page-title">
+    <h1>Panel Principal - &lt;{{ request.user.tenant.name }}&gt;</h1>
+    <div class="d-flex gap-2">
+        <button class="btn-export">
+            <i class="fas fa-download"></i> Exportar
+        </button>
+        <button class="btn-week">
+            <span>Esta semana</span>
+            <i class="fas fa-chevron-down"></i>
+        </button>
+    </div>
 </div>
+
+<!-- Stats Cards -->
+<div class="stats-cards">
+    <div class="stat-card new-claims">
+        <div class="stat-card-icon">
+            <i class="fas fa-file-alt"></i>
+        </div>
+        <div class="stat-card-title">GLOSAS NUEVAS</div>
+        <div class="stat-card-value">12</div>
+        <div class="stat-card-footer">
+            <div class="stat-card-footer-value up">
+                <i class="fas fa-arrow-up"></i>
+                <span>3.48%</span>
+            </div>
+            <div class="stat-card-footer-text">Últimos 30 días</div>
+        </div>
+    </div>
+    <div class="stat-card pending-claims">
+        <div class="stat-card-icon">
+            <i class="fas fa-exclamation-circle"></i>
+        </div>
+        <div class="stat-card-title">GLOSAS PENDIENTES</div>
+        <div class="stat-card-value">28</div>
+        <div class="stat-card-footer">
+            <div class="stat-card-footer-value up">
+                <i class="fas fa-arrow-up"></i>
+                <span>5.21%</span>
+            </div>
+            <div class="stat-card-footer-text">Requiere acción</div>
+        </div>
+    </div>
+    <div class="stat-card responded-claims">
+        <div class="stat-card-icon">
+            <i class="fas fa-check-circle"></i>
+        </div>
+        <div class="stat-card-title">RESPONDIDAS</div>
+        <div class="stat-card-value">15</div>
+        <div class="stat-card-footer">
+            <div class="stat-card-footer-value up">
+                <i class="fas fa-arrow-up"></i>
+                <span>12%</span>
+            </div>
+            <div class="stat-card-footer-text">Este mes</div>
+        </div>
+    </div>
+    <div class="stat-card pending-value">
+        <div class="stat-card-icon">
+            <i class="fas fa-dollar-sign"></i>
+        </div>
+        <div class="stat-card-title">VALOR PENDIENTE</div>
+        <div class="stat-card-value">$ 15,450,000</div>
+        <div class="stat-card-footer">
+            <div class="stat-card-footer-value up">
+                <i class="fas fa-arrow-up"></i>
+                <span>8.4%</span>
+            </div>
+            <div class="stat-card-footer-text">Valor acumulado</div>
+        </div>
+    </div>
+</div>
+
+<!-- Activity Section -->
+<div class="activity-section">
+    <!-- Activity by Module -->
+    <div class="dashboard-card">
+        <div class="dashboard-card-header">
+            <div class="dashboard-card-title">Actividad por Módulo</div>
+            <div class="dashboard-card-actions">
+                <i class="fas fa-ellipsis-v"></i>
+            </div>
+        </div>
+        <div class="dashboard-card-body">
+            <table class="activity-table">
+                <thead>
+                    <tr>
+                        <th>Módulo</th>
+                        <th>Estado</th>
+                        <th>Actividad</th>
+                        <th>Último Procesamiento</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-envelope text-primary me-2"></i>
+                                Ingesta de Correo
+                            </div>
+                        </td>
+                        <td><span class="status-badge status-active">ACTIVO</span></td>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <div class="me-2 text-nowrap">85%</div>
+                                <div class="progress-bar-container">
+                                    <div class="progress-bar progress-green" style="width: 85%"></div>
+                                </div>
+                            </div>
+                        </td>
+                        <td>Hace 5 minutos</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-database text-info me-2"></i>
+                                Extracción de Datos
+                            </div>
+                        </td>
+                        <td><span class="status-badge status-active">ACTIVO</span></td>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <div class="me-2 text-nowrap">70%</div>
+                                <div class="progress-bar-container">
+                                    <div class="progress-bar progress-blue" style="width: 70%"></div>
+                                </div>
+                            </div>
+                        </td>
+                        <td>Hace 15 minutos</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-sitemap text-warning me-2"></i>
+                                Flujo de Trabajo
+                            </div>
+                        </td>
+                        <td><span class="status-badge status-active">ACTIVO</span></td>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <div class="me-2 text-nowrap">60%</div>
+                                <div class="progress-bar-container">
+                                    <div class="progress-bar progress-orange" style="width: 60%"></div>
+                                </div>
+                            </div>
+                        </td>
+                        <td>Hace 2 horas</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-file-pdf text-danger me-2"></i>
+                                Generación PDF
+                            </div>
+                        </td>
+                        <td><span class="status-badge status-alert">ALERTA</span></td>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <div class="me-2 text-nowrap">45%</div>
+                                <div class="progress-bar-container">
+                                    <div class="progress-bar progress-red" style="width: 45%"></div>
+                                </div>
+                            </div>
+                        </td>
+                        <td>Hace 1 día</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Recent Activity -->
+    <div class="dashboard-card">
+        <div class="dashboard-card-header">
+            <div class="dashboard-card-title">Actividad Reciente</div>
+            <div class="dashboard-card-actions">
+                <i class="fas fa-ellipsis-v"></i>
+            </div>
+        </div>
+        <div class="dashboard-card-body">
+            <ul class="recent-activity-list">
+                <li class="recent-activity-item">
+                    <div class="recent-activity-title">Nueva glosa recibida</div>
+                    <div class="recent-activity-subtitle">Seguros Salud S.A. - Factura F-2023-1180</div>
+                    <div class="recent-activity-time">Hace 3 días</div>
+                </li>
+                <li class="recent-activity-item">
+                    <div class="recent-activity-title">Glosa respondida</div>
+                    <div class="recent-activity-subtitle">Protección Total - Factura F-2023-1145</div>
+                    <div class="recent-activity-time">Hace 5 días</div>
+                </li>
+                <li class="recent-activity-item">
+                    <div class="recent-activity-title">Glosa en análisis</div>
+                    <div class="recent-activity-subtitle">MediSeguro - Factura F-2023-1102</div>
+                    <div class="recent-activity-time">Hace 1 semana</div>
+                </li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- Footer Action -->
+<div class="footer-action">
+    <button class="btn-action">
+        <i class="fas fa-inbox"></i> Ir a Bandeja de Glosas
+    </button>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/dashboard.js' %}"></script>
 {% endblock %}

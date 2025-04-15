@@ -1,0 +1,30 @@
+<!-- Header -->
+<header class="header">
+    <div class="header-content">
+        <div class="header-left">
+            <div class="menu-toggle" id="menu-toggle">
+                <i class="fas fa-bars"></i>
+            </div>
+            <div class="logo-text">ZentraFlow</div>
+            <div class="tenant-name">&lt;{{ request.user.tenant.name }}&gt;</div>
+        </div>
+        <div class="header-right">
+            <div class="user-dropdown dropdown">
+                <div class="dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" id="userDropdown">
+                    <div class="user-avatar">{{ request.user.first_name|slice:":1"|default:"A" }}</div>
+                    <div class="user-info">
+                        <div class="user-name">{{ request.user.full_name|default:"Admin Sistema" }}</div>
+                        <div class="user-email">{{ request.user.email|default:"admin@ejemplo.com" }}</div>
+                    </div>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                    <li><a class="dropdown-item" href="#"><i class="fas fa-user"></i> Mi Perfil</a></li>
+                    <li><a class="dropdown-item" href="#"><i class="fas fa-cog"></i> Configuración</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item logout-item" href="{% url 'logout' %}"><i class="fas fa-sign-out-alt"></i> Cerrar Sesión</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</header>

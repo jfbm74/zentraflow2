@@ -1,0 +1,126 @@
+/* Base.css - Estilos generales para ZentraFlow */
+
+:root {
+    --primary-color: #2bae66;     /* Verde Zentratek */
+    --secondary-color: #0387c2;   /* Azul Zentratek */
+    --accent-color: #1cabdf;      /* Azul claro Zentratek */
+    --accent-green: #39d66d;      /* Verde claro Zentratek */
+    --light-color: #f3f4f6;
+    --dark-color: #111827;
+    --success-color: #10b981;
+    --warning-color: #f59e0b;
+    --danger-color: #ef4444;
+    --sidebar-width: 240px;
+    --sidebar-collapsed-width: 70px;
+    --header-height: 60px;
+}
+
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background-color: #f9fafb;
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+}
+
+/* Main Content */
+.main-content {
+    margin-left: var(--sidebar-width);
+    margin-top: var(--header-height);
+    padding: 1.5rem;
+    min-height: calc(100vh - var(--header-height));
+    transition: all 0.3s ease;
+}
+
+.main-content.expanded {
+    margin-left: var(--sidebar-collapsed-width);
+}
+
+/* Dropdowns y tooltips generales */
+.dropdown-menu {
+    border: none;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    border-radius: 0.5rem;
+    padding: 0.5rem 0;
+    min-width: 10rem;
+    margin-top: 0.5rem;
+    animation: dropdownFadeIn 0.2s ease-out forwards;
+}
+
+.dropdown-item {
+    padding: 0.6rem 1rem;
+    font-size: 0.9rem;
+    color: #4b5563;
+    transition: all 0.2s ease;
+}
+
+.dropdown-item:hover {
+    background-color: #f3f4f6;
+    color: var(--primary-color);
+}
+
+.dropdown-item i {
+    margin-right: 0.5rem;
+    width: 1rem;
+    text-align: center;
+}
+
+.dropdown-divider {
+    margin: 0.25rem 0;
+}
+
+.tooltip {
+    position: relative;
+    display: inline-block;
+}
+
+.tooltip .tooltiptext {
+    visibility: hidden;
+    width: auto;
+    background-color: rgba(0, 0, 0, 0.8);
+    color: #fff;
+    text-align: center;
+    border-radius: 6px;
+    padding: 5px 10px;
+    position: absolute;
+    z-index: 1;
+    bottom: 125%;
+    left: 50%;
+    transform: translateX(-50%);
+    opacity: 0;
+    transition: opacity 0.3s;
+    font-size: 0.75rem;
+    white-space: nowrap;
+}
+
+.tooltip:hover .tooltiptext {
+    visibility: visible;
+    opacity: 1;
+}
+
+/* Animaciones */
+@keyframes dropdownFadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Responsive */
+@media (max-width: 991.98px) {
+    .sidebar {
+        transform: translateX(-100%);
+        box-shadow: none;
+    }
+
+    .sidebar.show {
+        transform: translateX(0);
+        box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+    }
+
+    .main-content {
+        margin-left: 0;
+    }
+
+    .main-content.expanded {
+        margin-left: 0;
+    }
+}

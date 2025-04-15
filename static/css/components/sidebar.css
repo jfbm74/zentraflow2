@@ -1,0 +1,187 @@
+/* Sidebar.css - Estilos para la barra lateral de ZentraFlow */
+
+.sidebar {
+    width: var(--sidebar-width);
+    height: 100vh;
+    background-color: white;
+    position: fixed;
+    top: var(--header-height);
+    left: 0;
+    z-index: 900;
+    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.05);
+    transition: all 0.3s ease;
+    overflow-y: auto;
+    padding-bottom: 2rem;
+}
+
+.sidebar.collapsed {
+    width: var(--sidebar-collapsed-width);
+    overflow-x: hidden; /* Evitar desbordamiento horizontal */
+}
+
+.sidebar-content {
+    padding: 1.5rem 0;
+}
+
+/* Corrección del profile section para evitar cortes */
+.profile-section {
+    padding: 0 0.5rem; /* Reducir padding horizontal */
+    margin-bottom: 2rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    transition: all 0.3s ease;
+}
+
+/* Ajuste especial para cuando está colapsado */
+.sidebar.collapsed .profile-section {
+    padding: 0;
+}
+
+/* Corrección del avatar para evitar que se corte en sidebar colapsado */
+.profile-avatar {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background-color: var(--primary-color);
+    color: white;
+    font-size: 2rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1rem;
+    transition: all 0.3s ease;
+}
+
+/* Ajustar tamaño y posición del avatar cuando está colapsado */
+.sidebar.collapsed .profile-avatar {
+    width: 48px; /* Tamaño reducido para ajustarse al sidebar colapsado */
+    height: 48px;
+    margin: 0 auto; /* Centrar horizontalmente */
+    font-size: 1.25rem; /* Reducir tamaño de la fuente */
+}
+
+.profile-info {
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.sidebar.collapsed .profile-info {
+    display: none;
+}
+
+.profile-name {
+    font-weight: 600;
+    font-size: 1.1rem;
+    color: var(--dark-color);
+    margin-bottom: 0.25rem;
+}
+
+.profile-email {
+    font-size: 0.8rem;
+    color: #6b7280;
+}
+
+.sidebar-divider {
+    height: 1px;
+    background-color: #e5e7eb;
+    margin: 1rem 1.5rem;
+}
+
+.sidebar-section-title {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: #9ca3af;
+    padding: 0 1.5rem;
+    margin-bottom: 0.75rem;
+    letter-spacing: 0.05em;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.sidebar.collapsed .sidebar-section-title {
+    opacity: 0;
+    visibility: hidden;
+}
+
+.sidebar-menu {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+}
+
+.sidebar-menu-item {
+    margin-bottom: 0.25rem;
+}
+
+.sidebar-menu-link {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem 1.5rem;
+    color: #6b7280;
+    text-decoration: none;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+    border-left: 3px solid transparent;
+}
+
+.sidebar-menu-link:hover {
+    background-color: #f3f4f6;
+    color: var(--primary-color);
+}
+
+.sidebar-menu-link.active {
+    color: var(--primary-color);
+    background-color: #ecfdf5;
+    border-left-color: var(--primary-color);
+    font-weight: 500;
+}
+
+.sidebar-menu-icon {
+    margin-right: 0.75rem;
+    font-size: 1.1rem;
+    width: 1.5rem;
+    text-align: center;
+    transition: margin 0.3s ease;
+}
+
+.sidebar.collapsed .sidebar-menu-icon {
+    margin-right: 0;
+    text-align: center;
+    width: 100%; /* Asegurar que el icono use todo el ancho disponible */
+}
+
+.sidebar-menu-text {
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.sidebar.collapsed .sidebar-menu-text {
+    opacity: 0;
+    visibility: hidden;
+    white-space: nowrap;
+}
+
+.sidebar-menu-link.logout-link {
+    color: #ef4444;
+}
+
+.sidebar-menu-link.logout-link:hover {
+    background-color: #fee2e2;
+}
+
+/* Responsive sidebar */
+@media (max-width: 991.98px) {
+    .sidebar {
+        transform: translateX(-100%);
+    }
+    
+    .sidebar.show {
+        transform: translateX(0);
+    }
+    
+    .sidebar.collapsed {
+        transform: translateX(-100%);
+    }
+}
