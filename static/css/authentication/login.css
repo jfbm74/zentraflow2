@@ -1,0 +1,249 @@
+/* Estilos generales */
+:root {
+    --primary-color: #2bae66;     /* Verde Zentratek */
+    --secondary-color: #0387c2;   /* Azul Zentratek */
+    --accent-color: #1cabdf;      /* Azul claro Zentratek */
+    --accent-green: #39d66d;      /* Verde claro Zentratek */
+    --light-color: #f3f4f6;
+    --dark-color: #111827;
+    --success-color: #10b981;
+    --warning-color: #f59e0b;
+    --danger-color: #ef4444;
+}
+
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background-color: #f9fafb;
+    color: var(--dark-color);
+}
+
+/* Columna de branding */
+.bg-primary {
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)) !important;
+    overflow: hidden;
+    position: relative;
+}
+
+.brand-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: url('data:image/svg+xml;utf8,<svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg"><defs><pattern id="pattern" x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse"><circle cx="20" cy="20" r="1.5" fill="rgba(255,255,255,0.2)"/></pattern></defs><rect width="100%" height="100%" fill="url(%23pattern)"/></svg>');
+    opacity: 0.4;
+}
+
+.brand-background {
+    background: radial-gradient(circle at 30% 30%, var(--primary-color), transparent 60%),
+                radial-gradient(circle at 70% 70%, var(--secondary-color), transparent 60%);
+    opacity: 0.15;
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+}
+
+.illustration-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+
+/* Animación de onda */
+.wave-animation {
+    position: relative;
+    width: 100%;
+    height: 60px;
+    margin-top: 40px;
+}
+
+.wave {
+    position: absolute;
+    width: 300px;
+    height: 300px;
+    opacity: 0.4;
+    left: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 43%;
+    animation: drift 7000ms infinite linear;
+    transform-origin: 50% 48%;
+}
+
+.wave:nth-of-type(1) {
+    margin-left: -150px;
+}
+
+.wave:nth-of-type(2) {
+    margin-left: -150px;
+    animation: drift 9000ms infinite linear;
+    opacity: 0.1;
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.wave:nth-of-type(3) {
+    margin-left: -150px;
+    animation: drift 11000ms infinite linear;
+    opacity: 0.15;
+    background: rgba(255, 255, 255, 0.25);
+}
+
+@keyframes drift {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Contenedor del formulario */
+.login-form-container {
+    max-width: 480px;
+    width: 100%;
+}
+
+/* Botones */
+.btn-primary {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+    transition: all 0.3s ease;
+}
+
+.btn-primary:hover, .btn-primary:focus {
+    background-color: var(--secondary-color);
+    border-color: var(--secondary-color);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 6px rgba(43, 174, 102, 0.15);
+}
+
+/* Inputs */
+.form-control {
+    border: 1px solid #e5e7eb;
+    transition: all 0.3s ease;
+}
+
+.form-control:focus {
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 0.25rem rgba(43, 174, 102, 0.15);
+}
+
+.form-floating label {
+    color: #6b7280;
+}
+
+/* Contenedor de contraseña */
+.password-container {
+    position: relative;
+}
+
+.password-toggle {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    border: none;
+    background: transparent;
+    color: #6b7280;
+    z-index: 10;
+    padding: 0;
+}
+
+.password-toggle:hover, .password-toggle:focus {
+    color: var(--primary-color);
+}
+
+/* Mostrar contraseña */
+.password-display {
+    font-family: monospace;
+    letter-spacing: 1px;
+    word-break: break-all;
+}
+
+/* Logo Zentratek */
+.zentratek-logo, .zentratek-logo-sm {
+    filter: drop-shadow(0px 5px 15px rgba(0, 0, 0, 0.2));
+}
+
+.zentratek-logo-sm {
+    margin-bottom: 10px;
+}
+
+/* Colores de texto especiales */
+.zen-green {
+    color: var(--primary-color);
+}
+
+.zen-blue {
+    color: var(--secondary-color);
+}
+
+/* Icon container */
+.icon-container {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background-color: rgba(43, 174, 102, 0.1); /* Verde Zentratek con opacidad */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+}
+
+.text-success .icon-container {
+    background-color: rgba(43, 174, 102, 0.1); /* Verde Zentratek con opacidad */
+}
+
+/* Links */
+a {
+    color: var(--primary-color);
+    transition: color 0.3s ease;
+}
+
+a:hover {
+    color: var(--secondary-color);
+}
+
+/* Media queries */
+@media (max-width: 767.98px) {
+    .login-form-container {
+        max-width: 100%;
+        padding: 2rem !important;
+    }
+}
+
+/* Animaciones */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes pulse-animation {
+    0% {
+        box-shadow: 0 0 0 0 rgba(43, 174, 102, 0.7);
+    }
+    70% {
+        box-shadow: 0 0 0 10px rgba(43, 174, 102, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(43, 174, 102, 0);
+    }
+}
+
+.pulse-animation {
+    animation: pulse-animation 2s infinite;
+}
+
+.alert {
+    animation: fadeIn 0.3s ease-out;
+}

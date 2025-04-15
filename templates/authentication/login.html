@@ -1,0 +1,161 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Zentraflow | Iniciar Sesión{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/authentication/login.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row vh-100">
+        <!-- Columna izquierda (ilustración/branding) -->
+        <div class="col-md-6 d-none d-md-flex bg-primary p-0 position-relative">
+            <div class="brand-overlay"></div>
+            <div class="brand-background"></div>
+            <div class="illustration-container">
+                <div class="zentraflow-brand text-white text-center position-absolute top-50 start-50 translate-middle">
+                    <div class="logo mb-4">
+                        <svg width="160" height="160" viewBox="0 0 500 500" class="zentratek-logo">
+                            <!-- Círculo verde superior -->
+                            <circle cx="150" cy="100" r="65" fill="#2bae66" />
+                            <!-- Círculo azul superior -->
+                            <circle cx="350" cy="100" r="65" fill="#0387c2" />
+                            <!-- Forma verde (izquierda) -->
+                            <path d="M220,350 C150,320 100,250 100,180 C100,140 120,110 150,110 C180,110 220,140 220,180 L220,350 Z" fill="#2bae66" />
+                            <!-- Forma azul (derecha) -->
+                            <path d="M280,350 C350,320 400,250 400,180 C400,140 380,110 350,110 C320,110 280,140 280,180 L280,350 Z" fill="#0387c2" />
+                            <!-- Arco de conexión (abajo) -->
+                            <path d="M280,350 C250,380 250,380 220,350" fill="#0387c2" stroke="#0387c2" stroke-width="5" />
+                        </svg>
+                    </div>
+                    <h1 class="display-3 fw-bold">Zentraflow</h1>
+                    <p class="fs-4">Gestión de glosas simplificada</p>
+                    <div class="wave-animation">
+                        <div class="wave"></div>
+                        <div class="wave"></div>
+                        <div class="wave"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Columna derecha (formulario) -->
+        <div class="col-md-6 d-flex align-items-center justify-content-center">
+            <div class="login-form-container p-4 p-md-5">
+                <div class="d-block d-md-none text-center mb-5">
+                    <div class="d-flex justify-content-center">
+                        <svg width="60" height="60" viewBox="0 0 500 500" class="zentratek-logo-sm">
+                            <!-- Círculo verde superior -->
+                            <circle cx="150" cy="100" r="65" fill="#2bae66" />
+                            <!-- Círculo azul superior -->
+                            <circle cx="350" cy="100" r="65" fill="#0387c2" />
+                            <!-- Forma verde (izquierda) -->
+                            <path d="M220,350 C150,320 100,250 100,180 C100,140 120,110 150,110 C180,110 220,140 220,180 L220,350 Z" fill="#2bae66" />
+                            <!-- Forma azul (derecha) -->
+                            <path d="M280,350 C350,320 400,250 400,180 C400,140 380,110 350,110 C320,110 280,140 280,180 L280,350 Z" fill="#0387c2" />
+                            <!-- Arco de conexión (abajo) -->
+                            <path d="M280,350 C250,380 250,380 220,350" fill="#0387c2" stroke="#0387c2" stroke-width="5" />
+                        </svg>
+                    </div>
+                    <h2 class="mt-2 fw-bold zen-green">Zentraflow</h2>
+                </div>
+                
+                <h2 class="mb-4 fw-bold">Bienvenido a <span class="zen-green">Zentra</span><span class="zen-blue">flow</span></h2>
+                <p class="text-muted mb-4">Ingresa tus credenciales para acceder al sistema</p>
+                
+                {% if error %}
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <i class="fas fa-exclamation-circle me-2"></i>{{ error }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+                {% endif %}
+                
+                <form method="post" class="needs-validation" novalidate>
+                    {% csrf_token %}
+                    <div class="form-floating mb-3">
+                        <input type="email" class="form-control" id="username" name="username" placeholder="nombre@ejemplo.com" required>
+                        <label for="username">Correo electrónico</label>
+                        <div class="invalid-feedback">
+                            Ingresa un correo electrónico válido.
+                        </div>
+                    </div>
+                    
+                    <div class="form-floating mb-4 password-container">
+                        <input type="password" class="form-control" id="password" name="password" placeholder="Contraseña" required>
+                        <label for="password">Contraseña</label>
+                        <button type="button" class="btn btn-link password-toggle" tabindex="-1">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        <div class="invalid-feedback">
+                            Ingresa tu contraseña.
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between mb-4">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="remember_me" name="remember_me">
+                            <label class="form-check-label" for="remember_me">
+                                Recordarme
+                            </label>
+                        </div>
+                        <a href="{% url 'password_reset' %}" class="text-decoration-none">¿Olvidaste tu contraseña?</a>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary w-100 py-3 mb-4">
+                        Iniciar sesión
+                        <i class="fas fa-arrow-right ms-2"></i>
+                    </button>
+                </form>
+                
+                <div class="text-center">
+                    <p class="text-muted">
+                        ¿Necesitas ayuda? <a href="#" class="text-decoration-none">Contacta a soporte</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/authentication/main.js' %}"></script>
+<script>
+    // Validación de formulario
+    (function() {
+        'use strict'
+        const forms = document.querySelectorAll('.needs-validation')
+        
+        Array.prototype.slice.call(forms).forEach(function(form) {
+            form.addEventListener('submit', function(event) {
+                if (!form.checkValidity()) {
+                    event.preventDefault()
+                    event.stopPropagation()
+                }
+                
+                form.classList.add('was-validated')
+            }, false)
+        })
+    })()
+    
+    // Toggle de visibilidad de contraseña
+    document.querySelectorAll('.password-toggle').forEach(button => {
+        button.addEventListener('click', () => {
+            const input = button.closest('.password-container').querySelector('input')
+            const icon = button.querySelector('i')
+            
+            if (input.type === 'password') {
+                input.type = 'text'
+                icon.classList.remove('fa-eye')
+                icon.classList.add('fa-eye-slash')
+            } else {
+                input.type = 'password'
+                icon.classList.remove('fa-eye-slash')
+                icon.classList.add('fa-eye')
+            }
+        })
+    })
+</script>
+{% endblock %}
