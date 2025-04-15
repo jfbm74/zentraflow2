@@ -1,7 +1,7 @@
 # apps/configuracion/forms.py
 from django import forms
-from tenants.models import Tenant
-from .models import TenantConfig
+from apps.tenants.models import Tenant
+from apps.core.storage import TenantFileSystemStorage
 
 class TenantConfigForm(forms.Form):
     """Formulario para configuración básica del tenant."""

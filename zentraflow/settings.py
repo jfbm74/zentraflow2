@@ -47,11 +47,11 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt",
     "corsheaders",
     
-    'tenants.apps.TenantsConfig',
-    'authentication.apps.AuthenticationConfig',
-    'core.apps.CoreConfig',
-    'dashboard.apps.DashboardConfig',
-    'configuracion.apps.ConfiguracionConfig', 
+    'apps.tenants.apps.TenantsConfig',
+    'apps.authentication.apps.AuthenticationConfig',
+    'apps.core.apps.CoreConfig',
+    # 'apps.dashboard.apps.DashboardConfig',
+    'apps.configuracion.apps.ConfiguracionConfig',
 ]
 
 

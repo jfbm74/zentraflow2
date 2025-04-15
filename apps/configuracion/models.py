@@ -1,6 +1,6 @@
 from django.db import models
-from tenants.models import Tenant
-from core.storage import TenantFileSystemStorage
+from apps.tenants.models import Tenant
+from apps.core.storage import TenantFileSystemStorage
 
 def tenant_directory_path(instance, filename):
     """

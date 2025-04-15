@@ -1,7 +1,8 @@
 # configuracion/api/serializers.py
 from rest_framework import serializers
-from tenants.models import Tenant
 from ..models import TenantConfig
+from apps.tenants.models import Tenant
+from apps.authentication.models import ZentraflowUser
 
 class TenantSerializer(serializers.ModelSerializer):
     """Serializador para el modelo Tenant."""

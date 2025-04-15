@@ -5,7 +5,7 @@ from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.parsers import MultiPartParser, FormParser
 from django.shortcuts import get_object_or_404
-from tenants.models import Tenant
+from apps.tenants.models import Tenant
 from ..models import TenantConfig
 from ..services.config_service import ConfigService
 from .serializers import TenantConfigSerializer

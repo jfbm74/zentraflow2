@@ -2,5 +2,5 @@ from django.apps import AppConfig
 
 class CoreConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
-    name = 'core'
+    name = 'apps.core'  # Changed from 'core'
     verbose_name = 'Núcleo'
