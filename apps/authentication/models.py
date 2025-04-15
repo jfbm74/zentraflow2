@@ -77,7 +77,7 @@ class ZentraflowUser(AbstractUser):
         return f"{self.first_name} {self.last_name}"
     
     class Meta:
-        label = 'authentication'  # Ensure app_label is corapp_rect
+        app_label = 'authentication'  # Ensure app_label is corapp_rect
         unique_together = ['email', 'tenant']  # Email único por tenant
         verbose_name = "Usuario"
         verbose_name_plural = "Usuarios"
