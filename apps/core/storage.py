@@ -41,16 +41,30 @@ class TenantFileSystemStorage(FileSystemStorage):
         return super().get_available_name(name, max_length)
     
     def _save(self, name, content):
-        """
-        Guarda el archivo en el sistema de archivos.
-        El parámetro 'name' ya debe incluir la ruta del tenant.
-        """
-        # Asegúrese de que exista el directorio
-        directory = os.path.dirname(os.path.join(self.location, name))
-        if not os.path.exists(directory):
+    """
+    Guarda el archivo en el sistema de archivos.
+    El parámetro 'name' ya debe incluir la ruta del tenant.
+    """
+    # Asegúrese de que exista el directorio
+    directory = os.path.dirname(os.path.join(self.location, name))
+    if not os.path.exists(directory):
+        try:
             os.makedirs(directory, exist_ok=True)
-        
-        return super()._save(name, content)
+            print(f"Directorio creado: {directory}")
+        except Exception as e:
+            print(f"Error al crear directorio {directory}: {e}")
+    
+    # Guardar el archivo
+    result = super()._save(name, content)
+    
+    # Verificar si se guardó correctamente
+    full_path = os.path.join(self.location, result)
+    if os.path.exists(full_path):
+        print(f"Archivo guardado correctamente en: {full_path}")
+    else:
+        print(f"ADVERTENCIA: El archivo no se guardó en: {full_path}")
+    
+    return result
     
     def url(self, name):
         """
