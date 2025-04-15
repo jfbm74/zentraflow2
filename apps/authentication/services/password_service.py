@@ -1,6 +1,6 @@
 import secrets
 import string
-from authentication.models import ZentraflowUser
+from apps.authentication.models import ZentraflowUser
 
 class PasswordService:
     """Servicio para manejar operaciones relacionadas con contraseñas."""

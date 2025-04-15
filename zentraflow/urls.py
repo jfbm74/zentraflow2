@@ -1,4 +1,3 @@
-
 from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
@@ -11,16 +10,18 @@ from apps.dashboard.views import DashboardView
 
 urlpatterns = [
     path("admin/", admin.site.urls),
-    path("api/auth/", include("authentication.api.urls")),
-    path("auth/", include("authentication.web.urls")),
+    # Change this from "authentication.api.urls" to "apps.authentication.api.urls"
+    path("api/auth/", include("apps.authentication.api.urls")),
+    # Change this from "authentication.web.urls" to "apps.authentication.web.urls"
+    path("auth/", include("apps.authentication.web.urls")),
     path("dashboard/", DashboardView.as_view(), name="dashboard"),
-    path("configuracion/", include("configuracion.urls")),
+    path("configuracion/", include("apps.configuracion.urls")),
     path("", RedirectView.as_view(url="/dashboard/", permanent=False), name="home"),
     path('', ConfiguracionView.as_view(), name='configuracion'),
     path('<int:tenant_id>/', ConfiguracionView.as_view(), name='configuracion_tenant'),
     
-    # API endpoints
-    path('api/', include('configuracion.api.urls')),
+    # API endpoints - Change this from "configuracion.api.urls" to "apps.configuracion.api.urls"
+    path('api/', include('apps.configuracion.api.urls')),
 ]
 
 # Servir archivos estáticos en desarrollo

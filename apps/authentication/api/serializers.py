@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth import authenticate
-from tenants.models import Tenant
-from authentication.models import ZentraflowUser
+from apps.tenants.models import Tenant  # Update this
+from apps.authentication.models import ZentraflowUser  # Update this
 
 class TenantSerializer(serializers.ModelSerializer):
     """Serializador para el modelo Tenant."""

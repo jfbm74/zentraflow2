@@ -1,7 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.utils.translation import gettext_lazy as _
-from apps.tenants.models import Tenant
 
 class CustomUserManager(BaseUserManager):
     """Define un gestor de usuarios personalizado para ZentraflowUser."""
@@ -39,8 +38,27 @@ class ZentraflowUser(AbstractUser):
     first_name = models.CharField(_('first name'), max_length=150)
     last_name = models.CharField(_('last name'), max_length=150)
     
+    # Override ManyToMany relationships to avoid clashes
+    groups = models.ManyToManyField(
+        'auth.Group',
+        verbose_name=_('groups'),
+        blank=True,
+        help_text=_('The groups this user belongs to.'),
+        related_name='zentraflow_users',
+        related_query_name='zentraflow_user'
+    )
+    
+    user_permissions = models.ManyToManyField(
+        'auth.Permission',
+        verbose_name=_('user permissions'),
+        blank=True,
+        help_text=_('Specific permissions for this user.'),
+        related_name='zentraflow_users_permissions',
+        related_query_name='zentraflow_user_permission'
+    )
+    
     # Campos adicionales
-    tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name='users', verbose_name="Cliente")
+    tenant = models.ForeignKey('apps.tenants.Tenant', on_delete=models.CASCADE, related_name='users', verbose_name="Cliente")
     role = models.CharField(max_length=20, choices=Role.choices, default=Role.VISUALIZADOR, verbose_name="Rol")
     last_login_ip = models.GenericIPAddressField(null=True, blank=True, verbose_name="Última IP")
     failed_login_attempts = models.PositiveSmallIntegerField(default=0, verbose_name="Intentos fallidos")
@@ -59,6 +77,7 @@ class ZentraflowUser(AbstractUser):
         return f"{self.first_name} {self.last_name}"
     
     class Meta:
+        app_label = 'apps.authentication'  # Ensure app_label is correct
         unique_together = ['email', 'tenant']  # Email único por tenant
         verbose_name = "Usuario"
         verbose_name_plural = "Usuarios"

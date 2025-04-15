@@ -14,6 +14,7 @@ class Tenant(models.Model):
     correo_contacto = models.EmailField(max_length=255, verbose_name="Correo de contacto")
 
     class Meta:
+        app_label = 'apps.tenants'
         verbose_name = "Cliente"
         verbose_name_plural = "Clientes"
 

@@ -1,6 +1,6 @@
 from django.views.generic import TemplateView
 from django.contrib.auth.mixins import LoginRequiredMixin
-from tenants.models import Tenant
+from apps.tenants.models import Tenant  # Change this line
 from .forms import TenantConfigForm
 from .services.config_service import ConfigService
 from django.shortcuts import get_object_or_404

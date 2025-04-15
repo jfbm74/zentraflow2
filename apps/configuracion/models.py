@@ -11,7 +11,7 @@ def tenant_directory_path(instance, filename):
 
 class TenantConfig(models.Model):
     """Configuración específica para cada tenant."""
-    tenant = models.OneToOneField(Tenant, on_delete=models.CASCADE, related_name='config')
+    tenant = models.OneToOneField('apps.tenants.Tenant', on_delete=models.CASCADE, related_name='config')
     timezone = models.CharField(max_length=50, default='America/Bogota')
     date_format = models.CharField(max_length=20, default='DD/MM/YYYY')
     

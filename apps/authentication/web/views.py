@@ -4,10 +4,9 @@ from django.views.generic import View
 from django.urls import reverse_lazy
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_protect
-
-from authentication.services.auth_service import AuthenticationService
-from authentication.services.password_service import PasswordService
 from .forms import LoginForm, PasswordResetForm
+from apps.authentication.services.auth_service import AuthenticationService  # Update this
+from apps.authentication.services.password_service import PasswordService  # Update this
 
 class LoginView(View):
     """Vista para el formulario de login."""

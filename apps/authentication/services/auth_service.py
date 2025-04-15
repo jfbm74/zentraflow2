@@ -1,7 +1,9 @@
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
-from authentication.models import ZentraflowUser
 from ipware import get_client_ip
+from apps.authentication.models import ZentraflowUser  # Update this
+
+
 
 class AuthenticationService:
     """Servicio para manejar la autenticación de usuarios."""
