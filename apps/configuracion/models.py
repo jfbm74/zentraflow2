@@ -1,5 +1,5 @@
+# Ruta: apps/configuracion/models.py
 from django.db import models
-from apps.tenants.models import Tenant
 from apps.core.storage import TenantFileSystemStorage
 
 def tenant_directory_path(instance, filename):
@@ -11,7 +11,7 @@ def tenant_directory_path(instance, filename):
 
 class TenantConfig(models.Model):
     """Configuración específica para cada tenant."""
-    tenant = models.OneToOneField('apps.tenants.Tenant', on_delete=models.CASCADE, related_name='config')
+    tenant = models.OneToOneField('tenants.Tenant', on_delete=models.CASCADE, related_name='config')
     timezone = models.CharField(max_length=50, default='America/Bogota')
     date_format = models.CharField(max_length=20, default='DD/MM/YYYY')
     
@@ -30,6 +30,7 @@ class TenantConfig(models.Model):
         return f"Configuración para {self.tenant.name}"
     
     class Meta:
+        app_label = 'configuracion'  # Sin el prefijo 'apps.'
         verbose_name = "Configuración de Cliente"
         verbose_name_plural = "Configuraciones de Clientes"
         

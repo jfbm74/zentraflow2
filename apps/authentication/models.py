@@ -58,7 +58,7 @@ class ZentraflowUser(AbstractUser):
     )
     
     # Campos adicionales
-    tenant = models.ForeignKey('apps.tenants.Tenant', on_delete=models.CASCADE, related_name='users', verbose_name="Cliente")
+    tenant = models.ForeignKey('tenants.Tenant', on_delete=models.CASCADE, related_name='users', verbose_name="Cliente")
     role = models.CharField(max_length=20, choices=Role.choices, default=Role.VISUALIZADOR, verbose_name="Rol")
     last_login_ip = models.GenericIPAddressField(null=True, blank=True, verbose_name="Última IP")
     failed_login_attempts = models.PositiveSmallIntegerField(default=0, verbose_name="Intentos fallidos")
@@ -77,7 +77,7 @@ class ZentraflowUser(AbstractUser):
         return f"{self.first_name} {self.last_name}"
     
     class Meta:
-        app_label = 'apps.authentication'  # Ensure app_label is correct
+        label = 'authentication'  # Ensure app_label is corapp_rect
         unique_together = ['email', 'tenant']  # Email único por tenant
         verbose_name = "Usuario"
         verbose_name_plural = "Usuarios"
