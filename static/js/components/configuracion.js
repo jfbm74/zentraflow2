@@ -3,9 +3,8 @@
 document.addEventListener('DOMContentLoaded', function() {
     // Elementos del DOM
     const saveConfigBtn = document.getElementById('saveConfigBtn');
-    const footerSaveBtn = document.getElementById('footerSaveBtn');
-    const cancelBtn = document.getElementById('cancelBtn');
     const successAlert = document.getElementById('successAlert');
+    const errorAlert = document.getElementById('errorAlert');
     const tenantSelect = document.getElementById('tenant-select');
     const logoUpload = document.getElementById('logoUpload');
     const logoPreview = document.getElementById('logoPreview');
@@ -65,15 +64,15 @@ document.addEventListener('DOMContentLoaded', function() {
                         logoPreview.src = '/static/images/placeholder-logo.png';
                         
                         // Mostrar alerta de éxito
-                        showAlert(successAlert, data.message);
+                        showAlert('success', data.message);
                     } else {
                         // Mostrar mensaje de error
-                        showAlert(document.getElementById('errorAlert') || successAlert, data.message, 'danger');
+                        showAlert('error', data.message);
                     }
                 })
                 .catch(error => {
                     console.error('Error:', error);
-                    showAlert(document.getElementById('errorAlert') || successAlert, 'Error al procesar la solicitud', 'danger');
+                    showAlert('error', 'Error al procesar la solicitud');
                 });
             }
         });
@@ -117,49 +116,31 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(data => {
             if (data.success) {
                 // Mostrar alerta de éxito
-                showAlert(successAlert, data.message);
-                
-                // Actualizar la fecha de última actualización
-                const now = new Date();
-                const formattedDate = `${now.getDate()}/${now.getMonth() + 1}/${now.getFullYear()} ${now.getHours()}:${now.getMinutes()}:${now.getSeconds()}`;
-                document.querySelector('.last-updated strong:first-child').textContent = formattedDate;
+                showAlert('success', data.message);
             } else {
                 // Mostrar mensaje de error
-                showAlert(document.getElementById('errorAlert') || successAlert, data.message, 'danger');
+                showAlert('error', data.message);
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            showAlert(document.getElementById('errorAlert') || successAlert, 'Error al procesar la solicitud', 'danger');
+            showAlert('error', 'Error al procesar la solicitud');
         });
     };
     
-    // Asignar eventos a botones de guardar
+    // Asignar evento al botón de guardar
     if (saveConfigBtn) {
         saveConfigBtn.addEventListener('click', saveConfig);
     }
     
-    if (footerSaveBtn) {
-        footerSaveBtn.addEventListener('click', saveConfig);
-    }
-    
-    // Cancelar cambios
-    if (cancelBtn) {
-        cancelBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            // Recargar la página para descartar cambios
-            window.location.reload();
-        });
-    }
-    
     // Función para mostrar alertas
-    function showAlert(alertElement, message, type = 'success') {
-        // Si no se proporciona un elemento de alerta, salir
-        if (!alertElement) return;
+    function showAlert(type, message) {
+        // Ocultar ambas alertas primero
+        successAlert.classList.remove('show');
+        errorAlert.classList.remove('show');
         
-        // Actualizar clase y mensaje
-        alertElement.classList.remove('alert-success', 'alert-danger');
-        alertElement.classList.add(`alert-${type}`);
+        // Seleccionar la alerta correcta
+        const alertElement = type === 'success' ? successAlert : errorAlert;
         
         // Actualizar mensaje
         const messageElement = alertElement.querySelector('.alert-message');

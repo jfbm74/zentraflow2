@@ -17,7 +17,6 @@ urlpatterns = [
     path("dashboard/", DashboardView.as_view(), name="dashboard"),
     path("configuracion/", include("apps.configuracion.urls")),
     path("", RedirectView.as_view(url="/dashboard/", permanent=False), name="home"),
-    path('', ConfiguracionView.as_view(), name='configuracion'),
     path('<int:tenant_id>/', ConfiguracionView.as_view(), name='configuracion_tenant'),
     
     # API endpoints - Change this from "configuracion.api.urls" to "apps.configuracion.api.urls"
