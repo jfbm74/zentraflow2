@@ -8,7 +8,11 @@
 {% endblock %}
 
 {% block content %}
+<!-- Añadir token CSRF después del div class="config-header" -->
 <div class="config-header">
+    <!-- CSRF token para formularios POST -->
+    {% csrf_token %}
+
     <div class="page-title">
         <h1>Configuración del Cliente</h1>
         <div class="d-flex align-items-center gap-3">
@@ -29,6 +33,17 @@
         </div>
     </div>
     
+    <!-- Añadir alerta de error (oculta por defecto) -->
+    <div class="alert alert-danger alert-dismissible fade config-alert" role="alert" id="errorAlert">
+        <div class="alert-icon">
+            <i class="fas fa-exclamation-circle"></i>
+        </div>
+        <div class="alert-message">
+            <strong>Error:</strong> Ha ocurrido un problema al guardar la configuración.
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+
     <!-- Alerta de éxito (oculta por defecto) -->
     <div class="alert alert-success alert-dismissible fade config-alert" role="alert" id="successAlert">
         <div class="alert-icon">
@@ -83,30 +98,33 @@
                                 <div class="form-text">Nombre legal de la empresa cliente.</div>
                             </div>
                             
+                            <!-- Actualizaciones para el input del NIT -->
                             <div class="mb-4">
                                 <label for="clientNIT" class="form-label">NIT</label>
-                                <input type="text" class="form-control" id="clientNIT" value="900.123.456-7" {% if not is_super_admin %}disabled{% endif %}>
+                                <input type="text" class="form-control" id="clientNIT" value="{{ current_tenant.nit|default:'900.123.456-7' }}" {% if not is_super_admin %}disabled{% endif %}>
                                 <div class="form-text">Número de Identificación Tributaria</div>
                             </div>
                             
+                            <!-- Actualizaciones para la zona horaria -->
                             <div class="mb-4">
                                 <label for="timezone" class="form-label">Zona Horaria</label>
                                 <select class="form-select" id="timezone">
-                                    <option value="America/Bogota" selected>Bogotá (UTC-5)</option>
-                                    <option value="America/Mexico_City">Ciudad de México (UTC-6)</option>
-                                    <option value="America/Lima">Lima (UTC-5)</option>
-                                    <option value="America/Santiago">Santiago (UTC-4)</option>
-                                    <option value="America/Buenos_Aires">Buenos Aires (UTC-3)</option>
+                                    <option value="America/Bogota" {% if tenant_config.timezone == 'America/Bogota' %}selected{% endif %}>Bogotá (UTC-5)</option>
+                                    <option value="America/Mexico_City" {% if tenant_config.timezone == 'America/Mexico_City' %}selected{% endif %}>Ciudad de México (UTC-6)</option>
+                                    <option value="America/Lima" {% if tenant_config.timezone == 'America/Lima' %}selected{% endif %}>Lima (UTC-5)</option>
+                                    <option value="America/Santiago" {% if tenant_config.timezone == 'America/Santiago' %}selected{% endif %}>Santiago (UTC-4)</option>
+                                    <option value="America/Buenos_Aires" {% if tenant_config.timezone == 'America/Buenos_Aires' %}selected{% endif %}>Buenos Aires (UTC-3)</option>
                                 </select>
                                 <div class="form-text">Zona horaria para fechas y reportes</div>
                             </div>
                             
+                            <!-- Actualizaciones para el formato de fecha -->
                             <div class="mb-4">
                                 <label for="dateFormat" class="form-label">Formato de Fecha</label>
                                 <select class="form-select" id="dateFormat">
-                                    <option value="DD/MM/YYYY" selected>DD/MM/YYYY</option>
-                                    <option value="MM/DD/YYYY">MM/DD/YYYY</option>
-                                    <option value="YYYY-MM-DD">YYYY-MM-DD</option>
+                                    <option value="DD/MM/YYYY" {% if tenant_config.date_format == 'DD/MM/YYYY' %}selected{% endif %}>DD/MM/YYYY</option>
+                                    <option value="MM/DD/YYYY" {% if tenant_config.date_format == 'MM/DD/YYYY' %}selected{% endif %}>MM/DD/YYYY</option>
+                                    <option value="YYYY-MM-DD" {% if tenant_config.date_format == 'YYYY-MM-DD' %}selected{% endif %}>YYYY-MM-DD</option>
                                 </select>
                                 <div class="form-text">Formato para visualización de fechas</div>
                             </div>
@@ -114,8 +132,13 @@
                         <div class="col-md-6">
                             <div class="logo-upload-container mb-4">
                                 <label class="form-label">Logo del Cliente</label>
+                                <!-- Actualizaciones para la previsualización del logo -->
                                 <div class="logo-preview">
-                                    <img src="{% static 'images/placeholder-logo.png' %}" alt="Logo del cliente" id="logoPreview">
+                                    {% if tenant_config.logo %}
+                                        <img src="{{ tenant_config.logo.url }}" alt="Logo del cliente" id="logoPreview">
+                                    {% else %}
+                                        <img src="{% static 'images/placeholder-logo.png' %}" alt="Logo del cliente" id="logoPreview">
+                                    {% endif %}
                                 </div>
                                 <div class="logo-actions">
                                     <label for="logoUpload" class="btn btn-outline-primary btn-sm">
@@ -207,7 +230,7 @@
             </div>
         </div>
     </div>
-    
+
     <!-- Pestaña Ingesta de Correo -->
     <div class="tab-pane fade" id="correo" role="tabpanel" aria-labelledby="correo-tab">
         <div class="config-section">
@@ -427,7 +450,7 @@
             </div>
         </div>
     </div>
-    
+
     <!-- Pestaña Seguridad -->
     <div class="tab-pane fade" id="seguridad" role="tabpanel" aria-labelledby="seguridad-tab">
         <div class="config-section">

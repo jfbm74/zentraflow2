@@ -10,10 +10,15 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
+import os
+import sys  # Añadir esta línea
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Agregar 'apps' al path de Python
+sys.path.insert(0, os.path.join(BASE_DIR, 'apps'))
 
 
 # Quick-start development settings - unsuitable for production
@@ -29,7 +34,6 @@ ALLOWED_HOSTS = []
 
 
 # Application definition
-
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -37,7 +41,20 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+
+    # Aplicaciones de terceros
+    "rest_framework",
+    "rest_framework_simplejwt",
+    "corsheaders",
+    
+    'tenants.apps.TenantsConfig',
+    'authentication.apps.AuthenticationConfig',
+    'core.apps.CoreConfig',
+    'dashboard.apps.DashboardConfig',
+    'configuracion.apps.ConfiguracionConfig', 
 ]
+
+
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -120,3 +137,12 @@ STATIC_URL = "static/"
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+
+# Configuración de Media Files para archivos subidos
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+# Configuración para el sistema de almacenamiento personalizado
+DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
+

@@ -33,11 +33,12 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt",
     "corsheaders",
     
-    # Aplicaciones propias
-    "core",
-    "tenants",
-    "authentication",
-    "test",
+    'apps.tenants',
+    'apps.authentication',
+    'apps.core',
+    'apps.dashboard',
+    'apps.configuracion',  # Añadir esta línea
+
 ]
 
 # Configuración del modelo de usuario personalizado

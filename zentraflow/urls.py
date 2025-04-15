@@ -4,7 +4,9 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 from django.views.generic import RedirectView
-
+from apps.configuracion.views import ConfiguracionView
+from django.contrib.auth.decorators import login_required
+from django.utils.decorators import method_decorator
 from apps.dashboard.views import DashboardView
 
 urlpatterns = [
@@ -14,6 +16,11 @@ urlpatterns = [
     path("dashboard/", DashboardView.as_view(), name="dashboard"),
     path("configuracion/", include("configuracion.urls")),
     path("", RedirectView.as_view(url="/dashboard/", permanent=False), name="home"),
+    path('', ConfiguracionView.as_view(), name='configuracion'),
+    path('<int:tenant_id>/', ConfiguracionView.as_view(), name='configuracion_tenant'),
+    
+    # API endpoints
+    path('api/', include('configuracion.api.urls')),
 ]
 
 # Servir archivos estáticos en desarrollo
