@@ -1,0 +1,141 @@
+{% load static %}
+<!-- Pestaña General -->
+<div class="tab-pane fade show active" id="general" role="tabpanel" aria-labelledby="general-tab">
+    <div class="config-section">
+        <div class="config-card">
+            <div class="config-card-header">
+                <h3><i class="fas fa-building"></i> Información del Cliente</h3>
+            </div>
+            <div class="config-card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-4">
+                            <label for="clientName" class="form-label">Nombre del Cliente</label>
+                            <input type="text" class="form-control" id="clientName" value="{{ current_tenant.name }}" {% if not is_editable %}disabled{% endif %}>
+                            <div class="form-text">Nombre legal de la empresa cliente.</div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label for="clientNIT" class="form-label">NIT</label>
+                            <input type="text" class="form-control" id="clientNIT" value="900.123.456-7" {% if not is_super_admin %}disabled{% endif %}>
+                            <div class="form-text">Número de Identificación Tributaria</div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label for="timezone" class="form-label">Zona Horaria</label>
+                            <select class="form-select" id="timezone">
+                                <option value="America/Bogota" selected>Bogotá (UTC-5)</option>
+                                <option value="America/Mexico_City">Ciudad de México (UTC-6)</option>
+                                <option value="America/Lima">Lima (UTC-5)</option>
+                                <option value="America/Santiago">Santiago (UTC-4)</option>
+                                <option value="America/Buenos_Aires">Buenos Aires (UTC-3)</option>
+                            </select>
+                            <div class="form-text">Zona horaria para fechas y reportes</div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label for="dateFormat" class="form-label">Formato de Fecha</label>
+                            <select class="form-select" id="dateFormat">
+                                <option value="DD/MM/YYYY" selected>DD/MM/YYYY</option>
+                                <option value="MM/DD/YYYY">MM/DD/YYYY</option>
+                                <option value="YYYY-MM-DD">YYYY-MM-DD</option>
+                            </select>
+                            <div class="form-text">Formato para visualización de fechas</div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="logo-upload-container mb-4">
+                            <label class="form-label">Logo del Cliente</label>
+                            <div class="logo-preview">
+                                <img src="{% static 'images/placeholder-logo.png' %}" alt="Logo del cliente" id="logoPreview">
+                            </div>
+                            <div class="logo-actions">
+                                <label for="logoUpload" class="btn btn-outline-primary btn-sm">
+                                    <i class="fas fa-upload"></i> Cambiar Logo
+                                </label>
+                                <input type="file" id="logoUpload" accept="image/*" class="d-none">
+                                <button class="btn btn-outline-danger btn-sm" id="removeLogoBtn">
+                                    <i class="fas fa-trash-alt"></i> Eliminar
+                                </button>
+                            </div>
+                            <div class="form-text">Formato recomendado: PNG o SVG (max. 500KB)</div>
+                        </div>
+                        
+                        <div class="system-status">
+                            <h5>Estado del Sistema</h5>
+                            <div class="status-item">
+                                <span class="status-label">Estado Actual:</span>
+                                <span class="status-value text-success"><i class="fas fa-circle"></i> Activo</span>
+                            </div>
+                            <div class="status-item">
+                                <span class="status-label">Último Respaldo:</span>
+                                <span class="status-value">15/04/2025 09:45:22</span>
+                            </div>
+                            <div class="status-item">
+                                <span class="status-label">Espacio Utilizado:</span>
+                                <div class="progress status-progress">
+                                    <div class="progress-bar bg-success" role="progressbar" style="width: 25%" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100">25%</div>
+                                </div>
+                            </div>
+                            <div class="status-actions">
+                                <button class="btn btn-outline-primary">
+                                    <i class="fas fa-download"></i> Descargar Respaldo
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="config-card">
+            <div class="config-card-header">
+                <h3><i class="fas fa-sliders-h"></i> Preferencias Generales</h3>
+            </div>
+            <div class="config-card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Idioma Principal</label>
+                            <div class="language-selector">
+                                <div class="language-option selected">
+                                    <img src="{% static 'images/flags/es.svg' %}" alt="Español">
+                                    <span>Español</span>
+                                </div>
+                                <div class="language-option">
+                                    <img src="{% static 'images/flags/en.svg' %}" alt="English">
+                                    <span>English</span>
+                                </div>
+                                <div class="language-option">
+                                    <img src="{% static 'images/flags/pt.svg' %}" alt="Português">
+                                    <span>Português</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label d-block">Módulos Habilitados</label>
+                            <div class="form-check form-switch d-flex align-items-center mb-2">
+                                <input class="form-check-input" type="checkbox" id="moduloIngesta" checked>
+                                <label class="form-check-label ms-2" for="moduloIngesta">Ingesta de Correo</label>
+                            </div>
+                            <div class="form-check form-switch d-flex align-items-center mb-2">
+                                <input class="form-check-input" type="checkbox" id="moduloExtraccion" checked>
+                                <label class="form-check-label ms-2" for="moduloExtraccion">Extracción de Datos</label>
+                            </div>
+                            <div class="form-check form-switch d-flex align-items-center mb-2">
+                                <input class="form-check-input" type="checkbox" id="moduloFlujo" checked>
+                                <label class="form-check-label ms-2" for="moduloFlujo">Flujo de Trabajo</label>
+                            </div>
+                            <div class="form-check form-switch d-flex align-items-center">
+                                <input class="form-check-input" type="checkbox" id="moduloPDF" checked>
+                                <label class="form-check-label ms-2" for="moduloPDF">Generación PDF</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,26 @@
+<!-- Modal para agregar rango IP -->
+<div class="modal fade" id="ipRangeModal" tabindex="-1" aria-labelledby="ipRangeModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="ipRangeModalLabel">Agregar Rango IP</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="ipRange" class="form-label">Rango IP (CIDR)</label>
+                    <input type="text" class="form-control" id="ipRange" placeholder="Ej: 192.168.1.0/24">
+                    <div class="form-text">Formato CIDR (ej: 192.168.1.0/24) o IP única (ej: 192.168.1.10)</div>
+                </div>
+                <div class="mb-3">
+                    <label for="ipDescription" class="form-label">Descripción (opcional)</label>
+                    <input type="text" class="form-control" id="ipDescription" placeholder="Ej: Oficina Principal">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="saveIpBtn">Guardar</button>
+            </div>
+        </div>
+    </div>
+</div>

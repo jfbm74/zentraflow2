@@ -1,0 +1,23 @@
+<!-- Modal de confirmación para reautorizar OAuth -->
+<div class="modal fade" id="reauthorizeModal" tabindex="-1" aria-labelledby="reauthorizeModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="reauthorizeModalLabel">Reautorizar OAuth</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle"></i> Esta acción revocará la autorización actual y requerirá que vuelva a realizar el proceso de autorización con Google.
+                </div>
+                <p>¿Está seguro que desea reautorizar el acceso a esta cuenta de correo?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-warning" id="confirmReauthorizeBtn">
+                    <i class="fas fa-sync-alt"></i> Sí, Reautorizar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

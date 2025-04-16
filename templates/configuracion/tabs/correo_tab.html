@@ -1,0 +1,188 @@
+{% load static %}
+<!-- Pestaña Ingesta de Correo -->
+<div class="tab-pane fade" id="correo" role="tabpanel" aria-labelledby="correo-tab">
+    <div class="config-section">
+        <div class="config-card">
+            <div class="config-card-header">
+                <h3><i class="fas fa-envelope"></i> Configuración de Ingesta de Correo</h3>
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="ingestaEnabled" checked>
+                    <label class="form-check-label" for="ingestaEnabled">Habilitar Ingesta</label>
+                </div>
+            </div>
+            <div class="config-card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-4">
+                            <label for="emailMonitor" class="form-label">Correo Electrónico a Monitorear</label>
+                            <input type="email" class="form-control" id="emailMonitor" value="glosas@empresa.com">
+                            <div class="form-text">Dirección de correo donde se reciben las glosas</div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label for="authMethod" class="form-label">Método de Autenticación</label>
+                            <select class="form-select" id="authMethod">
+                                <option value="oauth" selected>OAuth 2.0 Web Flow</option>
+                                <option value="service">Cuenta de Servicio</option>
+                            </select>
+                            <div class="form-text">Método para conectarse a la cuenta de correo</div>
+                        </div>
+                        
+                        <!-- Credenciales OAuth 2.0 -->
+                        <div id="oauthCredentials">
+                            <div class="mb-4">
+                                <label for="clientId" class="form-label">Client ID</label>
+                                <input type="text" class="form-control" id="clientId" value="123456789-abcdef.apps.googleusercontent.com">
+                            </div>
+                            
+                            <div class="mb-4">
+                                <label for="clientSecret" class="form-label">Client Secret</label>
+                                <div class="input-group">
+                                    <input type="password" class="form-control" id="clientSecret" value="********">
+                                    <button class="btn btn-outline-secondary toggle-password" type="button">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="oauth-status mb-4">
+                                <label class="form-label">Estado de Autorización:</label>
+                                <span class="badge bg-success"><i class="fas fa-check-circle"></i> Autorizado</span>
+                                <button class="btn btn-primary btn-sm ms-2" id="reauthorizeBtn">
+                                    <i class="fas fa-sync-alt"></i> Reautorizar
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Credenciales Cuenta de Servicio (oculto por defecto) -->
+                        <div id="serviceCredentials" style="display: none;">
+                            <div class="mb-4">
+                                <label class="form-label">Archivo de Clave JSON</label>
+                                <div class="service-account-file">
+                                    <div class="file-status">
+                                        <i class="fas fa-file-code text-primary"></i>
+                                        <span class="file-name">service-account-key.json</span>
+                                    </div>
+                                    <div class="file-actions">
+                                        <label for="serviceKeyUpload" class="btn btn-outline-primary btn-sm">
+                                            <i class="fas fa-upload"></i> Cambiar
+                                        </label>
+                                        <input type="file" id="serviceKeyUpload" accept=".json" class="d-none">
+                                    </div>
+                                </div>
+                                <div class="form-text">Archivo JSON con credenciales de Google Cloud</div>
+                            </div>
+                            
+                            <div class="service-status mb-4">
+                                <label class="form-label">Estado de Configuración:</label>
+                                <span class="badge bg-success"><i class="fas fa-check-circle"></i> Archivo cargado</span>
+                                <button class="btn btn-outline-danger btn-sm ms-2" id="removeKeyBtn">
+                                    <i class="fas fa-trash-alt"></i> Eliminar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="mb-4">
+                            <label for="folderMonitor" class="form-label">Carpeta a Monitorear</label>
+                            <select class="form-select" id="folderMonitor">
+                                <option value="INBOX" selected>INBOX (Bandeja de entrada)</option>
+                                <option value="[Gmail]/Important">[Gmail]/Important (Destacados)</option>
+                                <option value="Glosas">Glosas (Carpeta personalizada)</option>
+                            </select>
+                            <div class="form-text">Carpeta de correo donde se buscarán las glosas</div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label for="checkInterval" class="form-label">Intervalo de Verificación</label>
+                            <div class="input-group">
+                                <input type="number" class="form-control" id="checkInterval" value="5" min="1" max="60">
+                                <span class="input-group-text">minutos</span>
+                            </div>
+                            <div class="form-text">Frecuencia con la que se revisa el correo</div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="markAsRead" checked>
+                                <label class="form-check-label" for="markAsRead">Marcar correos como leídos</label>
+                            </div>
+                            <div class="form-text">Marcar automáticamente los correos procesados como leídos</div>
+                        </div>
+                        
+                        <div class="email-filter-rules">
+                            <label class="form-label">Reglas de Filtrado de Correo</label>
+                            <div class="filter-rule">
+                                <div class="filter-type">De:</div>
+                                <div class="filter-value">*@eps-salud.com</div>
+                                <div class="filter-actions">
+                                    <button class="filter-edit"><i class="fas fa-edit"></i></button>
+                                    <button class="filter-delete"><i class="fas fa-times"></i></button>
+                                </div>
+                            </div>
+                            <div class="filter-rule">
+                                <div class="filter-type">Asunto:</div>
+                                <div class="filter-value">*GLOSA*</div>
+                                <div class="filter-actions">
+                                    <button class="filter-edit"><i class="fas fa-edit"></i></button>
+                                    <button class="filter-delete"><i class="fas fa-times"></i></button>
+                                </div>
+                            </div>
+                            <button class="btn btn-outline-primary btn-sm mt-2 add-filter-btn">
+                                <i class="fas fa-plus"></i> Agregar Regla
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="config-card">
+            <div class="config-card-header">
+                <h3><i class="fas fa-history"></i> Historial de Sincronización</h3>
+            </div>
+            <div class="config-card-body">
+                <div class="history-timeline">
+                    <div class="timeline-item">
+                        <div class="timeline-marker success"></div>
+                        <div class="timeline-content">
+                            <div class="timeline-date">15/04/2025 10:15:22</div>
+                            <div class="timeline-title">Sincronización exitosa</div>
+                            <div class="timeline-details">12 correos procesados, 3 nuevas glosas</div>
+                        </div>
+                    </div>
+                    <div class="timeline-item">
+                        <div class="timeline-marker success"></div>
+                        <div class="timeline-content">
+                            <div class="timeline-date">15/04/2025 10:10:12</div>
+                            <div class="timeline-title">Sincronización exitosa</div>
+                            <div class="timeline-details">8 correos procesados, 0 nuevas glosas</div>
+                        </div>
+                    </div>
+                    <div class="timeline-item">
+                        <div class="timeline-marker error"></div>
+                        <div class="timeline-content">
+                            <div class="timeline-date">15/04/2025 10:05:02</div>
+                            <div class="timeline-title">Error de autenticación</div>
+                            <div class="timeline-details">No se pudo establecer conexión con el servidor IMAP</div>
+                        </div>
+                    </div>
+                    <div class="timeline-item">
+                        <div class="timeline-marker success"></div>
+                        <div class="timeline-content">
+                            <div class="timeline-date">15/04/2025 10:00:01</div>
+                            <div class="timeline-title">Sincronización exitosa</div>
+                            <div class="timeline-details">15 correos procesados, 5 nuevas glosas</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="text-center mt-3">
+                    <button class="btn btn-primary">
+                        <i class="fas fa-sync-alt"></i> Sincronizar Ahora
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

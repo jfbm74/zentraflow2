@@ -1,0 +1,31 @@
+<!-- Modal para editar regla de filtro -->
+<div class="modal fade" id="filterRuleModal" tabindex="-1" aria-labelledby="filterRuleModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="filterRuleModalLabel">Editar Regla de Filtro</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="filterType" class="form-label">Tipo de Filtro</label>
+                    <select class="form-select" id="filterType">
+                        <option value="from">De (Remitente)</option>
+                        <option value="subject">Asunto</option>
+                        <option value="body">Contenido</option>
+                        <option value="has-attachment">Tiene Adjunto</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label for="filterValue" class="form-label">Valor</label>
+                    <input type="text" class="form-control" id="filterValue" placeholder="Ej: *@empresa.com, *GLOSA*">
+                    <div class="form-text">Usa * como comodín para coincidencias parciales</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="saveFilterBtn">Guardar</button>
+            </div>
+        </div>
+    </div>
+</div>
