@@ -1,14 +1,23 @@
 # Ruta: apps/configuracion/models.py
 from django.db import models
 from apps.core.storage import TenantFileSystemStorage
+import os
 
 def tenant_directory_path(instance, filename):
     """
     Ruta donde se almacenará el archivo, estructurada por tenant.
     Ejemplo: 'tenants/tenant_1/logos/logo.png'
     """
-    return f'tenants/tenant_{instance.tenant.id}/logos/{filename}'
-
+    # Asegurarnos de tener solo el nombre del archivo sin ruta
+    filename = os.path.basename(filename)
+    tenant_id = instance.tenant.id
+    
+    # Imprimir información de depuración
+    print(f"Creando ruta para tenant_id={tenant_id}, filename={filename}")
+    path = f'tenants/tenant_{tenant_id}/logos/{filename}'
+    print(f"tenant_directory_path: Ruta final: {path}")
+    
+    return path
 class TenantConfig(models.Model):
     """Configuración específica para cada tenant."""
     tenant = models.OneToOneField('tenants.Tenant', on_delete=models.CASCADE, related_name='config')
@@ -20,7 +29,8 @@ class TenantConfig(models.Model):
         upload_to=tenant_directory_path, 
         storage=TenantFileSystemStorage(),
         null=True, 
-        blank=True
+        blank=True,
+        verbose_name="Logo del cliente"
     )
     
     last_updated = models.DateTimeField(auto_now=True)

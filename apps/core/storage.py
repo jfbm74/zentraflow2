@@ -1,3 +1,4 @@
+# Ruta: apps/core/storage.py
 from django.core.files.storage import FileSystemStorage
 from django.conf import settings
 import os
@@ -13,13 +14,11 @@ class TenantFileSystemStorage(FileSystemStorage):
     - Mantiene la extensión original del archivo
     """
     
-    def __init__(self, base_path='tenants', *args, **kwargs):
-        self.base_path = base_path
+    def __init__(self, *args, **kwargs):
+        # Usar la carpeta media como base
+        kwargs.setdefault('location', settings.MEDIA_ROOT)
+        kwargs.setdefault('base_url', settings.MEDIA_URL)
         super().__init__(*args, **kwargs)
-    
-    def get_tenant_path(self, tenant_id):
-        """Construye la ruta base para un tenant específico."""
-        return os.path.join(self.base_path, f'tenant_{tenant_id}')
     
     def get_valid_name(self, name):
         """
@@ -37,37 +36,41 @@ class TenantFileSystemStorage(FileSystemStorage):
         Obtiene un nombre disponible para el archivo.
         Si ya existe un archivo con el mismo nombre, se genera un nuevo nombre único.
         """
-        name = self.get_valid_name(name)
-        return super().get_available_name(name, max_length)
+        # Preservar la ruta pero cambiar el nombre de archivo
+        dirname, basename = os.path.split(name)
+        new_basename = self.get_valid_name(basename)
+        
+        if dirname:
+            new_name = os.path.join(dirname, new_basename)
+        else:
+            new_name = new_basename
+            
+        print(f"Original path: {name}, New path: {new_name}")
+        
+        return super().get_available_name(new_name, max_length)
     
     def _save(self, name, content):
-    """
-    Guarda el archivo en el sistema de archivos.
-    El parámetro 'name' ya debe incluir la ruta del tenant.
-    """
-    # Asegúrese de que exista el directorio
-    directory = os.path.dirname(os.path.join(self.location, name))
-    if not os.path.exists(directory):
-        try:
-            os.makedirs(directory, exist_ok=True)
-            print(f"Directorio creado: {directory}")
-        except Exception as e:
-            print(f"Error al crear directorio {directory}: {e}")
-    
-    # Guardar el archivo
-    result = super()._save(name, content)
-    
-    # Verificar si se guardó correctamente
-    full_path = os.path.join(self.location, result)
-    if os.path.exists(full_path):
-        print(f"Archivo guardado correctamente en: {full_path}")
-    else:
-        print(f"ADVERTENCIA: El archivo no se guardó en: {full_path}")
-    
-    return result
-    
-    def url(self, name):
         """
-        Sobrescribe el método url para proporcionar la URL correcta al archivo.
+        Guarda el archivo en el sistema de archivos.
+        El parámetro 'name' ya debe incluir la ruta del tenant.
         """
-        return super().url(name)
+        # Asegúrese de que exista el directorio
+        directory = os.path.dirname(os.path.join(self.location, name))
+        if not os.path.exists(directory):
+            try:
+                os.makedirs(directory, exist_ok=True)
+                print(f"Directorio creado: {directory}")
+            except Exception as e:
+                print(f"Error al crear directorio {directory}: {e}")
+        
+        # Guardar el archivo
+        result = super()._save(name, content)
+        
+        # Verificar si se guardó correctamente
+        full_path = os.path.join(self.location, result)
+        if os.path.exists(full_path):
+            print(f"Archivo guardado correctamente en: {full_path}")
+        else:
+            print(f"ADVERTENCIA: El archivo no se guardó en: {full_path}")
+        
+        return result

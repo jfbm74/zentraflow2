@@ -5,6 +5,7 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/components/configuracion.css' %}">
+<link rel="stylesheet" href="{% static 'css/flag-icons.min.css' %}">
 {% endblock %}
 
 {% block content %}
@@ -190,15 +191,15 @@
                                 <label class="form-label">Idioma Principal</label>
                                 <div class="language-selector">
                                     <div class="language-option selected">
-                                        <img src="{% static 'images/flags/es.svg' %}" alt="Español">
+                                        <span class="flag-icon flag-icon-es"></span>
                                         <span>Español</span>
                                     </div>
                                     <div class="language-option">
-                                        <img src="{% static 'images/flags/en.svg' %}" alt="English">
+                                        <span class="flag-icon flag-icon-gb"></span>
                                         <span>English</span>
                                     </div>
                                     <div class="language-option">
-                                        <img src="{% static 'images/flags/pt.svg' %}" alt="Português">
+                                        <span class="flag-icon flag-icon-pt"></span>
                                         <span>Português</span>
                                     </div>
                                 </div>
