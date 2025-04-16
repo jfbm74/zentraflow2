@@ -1,24 +1,37 @@
-/**
- * configuracion.js - Funcionalidades para el módulo de Configuración del Cliente
- */
-
+// static/js/components/configuracion.js
 document.addEventListener('DOMContentLoaded', function() {
     // Referencias a elementos del DOM
     const saveConfigBtn = document.getElementById('saveConfigBtn');
     const footerSaveBtn = document.getElementById('footerSaveBtn');
     const cancelBtn = document.getElementById('cancelBtn');
     const successAlert = document.getElementById('successAlert');
-    const configForm = document.querySelectorAll('.config-card');
+    const tenantSelect = document.getElementById('tenant-select');
+    const configTabs = document.getElementById('configTabs');
     const authMethodSelect = document.getElementById('authMethod');
     const oauthCredentials = document.getElementById('oauthCredentials');
     const serviceCredentials = document.getElementById('serviceCredentials');
-    const logoUpload = document.getElementById('logoUpload');
-    const logoPreview = document.getElementById('logoPreview');
-    const removeLogoBtn = document.getElementById('removeLogoBtn');
-    const reauthorizeBtn = document.getElementById('reauthorizeBtn');
-    const tenantSelect = document.getElementById('tenant-select');
-
-    // Cambiar entre métodos de autenticación
+    
+    // Función para mostrar el mensaje de éxito
+    function showSuccessMessage() {
+        successAlert.classList.add('show');
+        setTimeout(() => {
+            successAlert.classList.remove('show');
+        }, 3000);
+    }
+    
+    // Función para cambiar de tenant
+    if (tenantSelect) {
+        tenantSelect.addEventListener('change', function() {
+            const tenantId = this.value;
+            if (tenantId) {
+                window.location.href = `/configuracion/${tenantId}/`;
+            } else {
+                window.location.href = '/configuracion/';
+            }
+        });
+    }
+    
+    // Cambiar entre tipos de autenticación de correo
     if (authMethodSelect) {
         authMethodSelect.addEventListener('change', function() {
             if (this.value === 'oauth') {
@@ -30,21 +43,26 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
-
-    // Toggle de contraseña
+    
+    // Toggle para mostrar/ocultar contraseñas
     document.querySelectorAll('.toggle-password').forEach(button => {
         button.addEventListener('click', function() {
-            const input = this.previousElementSibling;
-            const type = input.getAttribute('type') === 'password' ? 'text' : 'password';
-            input.setAttribute('type', type);
+            const input = this.closest('.input-group').querySelector('input');
+            const icon = this.querySelector('i');
             
-            // Cambiar icono
-            this.querySelector('i').classList.toggle('fa-eye');
-            this.querySelector('i').classList.toggle('fa-eye-slash');
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.classList.remove('fa-eye');
+                icon.classList.add('fa-eye-slash');
+            } else {
+                input.type = 'password';
+                icon.classList.remove('fa-eye-slash');
+                icon.classList.add('fa-eye');
+            }
         });
     });
-
-    // Selector de idioma
+    
+    // Manejo del selector de idioma
     document.querySelectorAll('.language-option').forEach(option => {
         option.addEventListener('click', function() {
             document.querySelectorAll('.language-option').forEach(opt => {
@@ -53,8 +71,12 @@ document.addEventListener('DOMContentLoaded', function() {
             this.classList.add('selected');
         });
     });
-
-    // Gestión de logo
+    
+    // Manejo del logo
+    const logoUpload = document.getElementById('logoUpload');
+    const logoPreview = document.getElementById('logoPreview');
+    const removeLogoBtn = document.getElementById('removeLogoBtn');
+    
     if (logoUpload) {
         logoUpload.addEventListener('change', function() {
             const file = this.files[0];
@@ -67,152 +89,91 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
-
-    // Eliminar logo
+    
     if (removeLogoBtn) {
         removeLogoBtn.addEventListener('click', function() {
             logoPreview.src = '/static/images/placeholder-logo.png';
             if (logoUpload) {
-                logoUpload.value = ''; // Limpiar input file
+                logoUpload.value = '';
             }
         });
     }
-
-    // Abrir modal para editar regla de filtro
-    document.querySelectorAll('.filter-edit').forEach(button => {
-        button.addEventListener('click', function() {
-            const rule = this.closest('.filter-rule');
-            const filterType = rule.querySelector('.filter-type').textContent.replace(':', '').trim();
-            const filterValue = rule.querySelector('.filter-value').textContent.trim();
-            
-            // Configurar modal con valores actuales
-            const filterTypeSelect = document.getElementById('filterType');
-            const filterValueInput = document.getElementById('filterValue');
-            
-            // Seleccionar la opción correcta en el select
-            for (let i = 0; i < filterTypeSelect.options.length; i++) {
-                if (filterTypeSelect.options[i].text.startsWith(filterType)) {
-                    filterTypeSelect.selectedIndex = i;
-                    break;
-                }
-            }
-            
-            filterValueInput.value = filterValue;
-            
-            // Mostrar modal
-            const filterModal = new bootstrap.Modal(document.getElementById('filterRuleModal'));
-            filterModal.show();
-        });
-    });
-
-    // Eliminar regla de filtro
-    document.querySelectorAll('.filter-delete').forEach(button => {
-        button.addEventListener('click', function() {
-            const rule = this.closest('.filter-rule');
-            rule.remove();
-        });
-    });
-
-    // Agregar regla de filtro
+    
+    // Manejo de reglas de filtro
     const addFilterBtn = document.querySelector('.add-filter-btn');
     if (addFilterBtn) {
         addFilterBtn.addEventListener('click', function() {
-            // Limpiar modal para nueva regla
-            document.getElementById('filterType').selectedIndex = 0;
-            document.getElementById('filterValue').value = '';
-            
-            // Mostrar modal
-            const filterModal = new bootstrap.Modal(document.getElementById('filterRuleModal'));
-            filterModal.show();
+            const modal = new bootstrap.Modal(document.getElementById('filterRuleModal'));
+            modal.show();
         });
     }
-
-    // Guardar regla de filtro
+    
     const saveFilterBtn = document.getElementById('saveFilterBtn');
     if (saveFilterBtn) {
         saveFilterBtn.addEventListener('click', function() {
-            const filterType = document.getElementById('filterType');
-            const filterValue = document.getElementById('filterValue');
-            const filterTypeText = filterType.options[filterType.selectedIndex].text;
-            const filterValueText = filterValue.value.trim();
+            const filterType = document.getElementById('filterType').value;
+            const filterValue = document.getElementById('filterValue').value;
             
-            if (filterValueText) {
-                // Crear nueva regla
+            if (filterValue.trim() !== '') {
+                const filterRulesContainer = document.querySelector('.email-filter-rules');
                 const newRule = document.createElement('div');
                 newRule.className = 'filter-rule';
                 newRule.innerHTML = `
-                    <div class="filter-type">${filterTypeText}:</div>
-                    <div class="filter-value">${filterValueText}</div>
+                    <div class="filter-type">${filterType === 'from' ? 'De:' : filterType === 'subject' ? 'Asunto:' : filterType === 'body' ? 'Contenido:' : 'Tiene Adjunto:'}</div>
+                    <div class="filter-value">${filterValue}</div>
                     <div class="filter-actions">
                         <button class="filter-edit"><i class="fas fa-edit"></i></button>
                         <button class="filter-delete"><i class="fas fa-times"></i></button>
                     </div>
                 `;
                 
-                // Agregar eventos a los botones de la nueva regla
-                newRule.querySelector('.filter-edit').addEventListener('click', function() {
-                    // Código para editar (similar al anterior)
-                    const rule = this.closest('.filter-rule');
-                    const filterType = rule.querySelector('.filter-type').textContent.replace(':', '').trim();
-                    const filterValue = rule.querySelector('.filter-value').textContent.trim();
-                    
-                    const filterTypeSelect = document.getElementById('filterType');
-                    const filterValueInput = document.getElementById('filterValue');
-                    
-                    for (let i = 0; i < filterTypeSelect.options.length; i++) {
-                        if (filterTypeSelect.options[i].text.startsWith(filterType)) {
-                            filterTypeSelect.selectedIndex = i;
-                            break;
-                        }
-                    }
-                    
-                    filterValueInput.value = filterValue;
-                    
-                    const filterModal = new bootstrap.Modal(document.getElementById('filterRuleModal'));
-                    filterModal.show();
-                });
+                filterRulesContainer.insertBefore(newRule, addFilterBtn);
                 
+                // Agregar listeners para los nuevos botones
                 newRule.querySelector('.filter-delete').addEventListener('click', function() {
-                    this.closest('.filter-rule').remove();
+                    newRule.remove();
                 });
                 
-                // Insertar la nueva regla antes del botón
-                document.querySelector('.email-filter-rules').insertBefore(newRule, addFilterBtn);
+                newRule.querySelector('.filter-edit').addEventListener('click', function() {
+                    // Rellenar el modal con los valores actuales
+                    document.getElementById('filterType').value = filterType;
+                    document.getElementById('filterValue').value = filterValue;
+                    
+                    // Mostrar modal
+                    const modal = new bootstrap.Modal(document.getElementById('filterRuleModal'));
+                    modal.show();
+                    
+                    // Al guardar, actualizar en lugar de crear nuevo
+                    saveFilterBtn.dataset.editing = true;
+                    saveFilterBtn.dataset.editingRule = newRule;
+                });
                 
                 // Cerrar modal
                 bootstrap.Modal.getInstance(document.getElementById('filterRuleModal')).hide();
             }
         });
     }
-
-    // Manejo similar para restricciones IP
-    document.querySelectorAll('.ip-delete').forEach(button => {
-        button.addEventListener('click', function() {
-            this.closest('.ip-range').remove();
-        });
-    });
-
+    
+    // Manejo de rangos IP
     const addIpBtn = document.querySelector('.add-ip-btn');
     if (addIpBtn) {
         addIpBtn.addEventListener('click', function() {
-            document.getElementById('ipRange').value = '';
-            document.getElementById('ipDescription').value = '';
-            
-            const ipModal = new bootstrap.Modal(document.getElementById('ipRangeModal'));
-            ipModal.show();
+            const modal = new bootstrap.Modal(document.getElementById('ipRangeModal'));
+            modal.show();
         });
     }
-
+    
     const saveIpBtn = document.getElementById('saveIpBtn');
     if (saveIpBtn) {
         saveIpBtn.addEventListener('click', function() {
-            const ipRange = document.getElementById('ipRange').value.trim();
+            const ipRange = document.getElementById('ipRange').value;
+            const ipDescription = document.getElementById('ipDescription').value;
             
-            if (ipRange) {
-                // Crear nuevo rango IP
-                const newIpRange = document.createElement('div');
-                newIpRange.className = 'ip-range';
-                newIpRange.innerHTML = `
+            if (ipRange.trim() !== '') {
+                const ipRestrictionsContainer = document.querySelector('.ip-restrictions');
+                const newRange = document.createElement('div');
+                newRange.className = 'ip-range';
+                newRange.innerHTML = `
                     <div class="ip-value">${ipRange}</div>
                     <div class="ip-actions">
                         <button class="ip-edit"><i class="fas fa-edit"></i></button>
@@ -220,367 +181,294 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                 `;
                 
-                // Agregar eventos
-                newIpRange.querySelector('.ip-delete').addEventListener('click', function() {
-                    this.closest('.ip-range').remove();
+                ipRestrictionsContainer.appendChild(newRange);
+                
+                // Agregar listeners para los nuevos botones
+                newRange.querySelector('.ip-delete').addEventListener('click', function() {
+                    newRange.remove();
                 });
                 
-                // Insertar nuevo rango
-                document.querySelector('.ip-restrictions').appendChild(newIpRange);
+                newRange.querySelector('.ip-edit').addEventListener('click', function() {
+                    // Rellenar el modal con los valores actuales
+                    document.getElementById('ipRange').value = ipRange;
+                    document.getElementById('ipDescription').value = ipDescription;
+                    
+                    // Mostrar modal
+                    const modal = new bootstrap.Modal(document.getElementById('ipRangeModal'));
+                    modal.show();
+                    
+                    // Al guardar, actualizar en lugar de crear nuevo
+                    saveIpBtn.dataset.editing = true;
+                    saveIpBtn.dataset.editingRange = newRange;
+                });
                 
                 // Cerrar modal
                 bootstrap.Modal.getInstance(document.getElementById('ipRangeModal')).hide();
             }
         });
     }
-
-    // Reautorizar OAuth
-    if (reauthorizeBtn) {
-        reauthorizeBtn.addEventListener('click', function() {
-            // Mostrar modal de confirmación
-            const reauthorizeModal = new bootstrap.Modal(document.getElementById('reauthorizeModal'));
-            reauthorizeModal.show();
+    
+    // Recopilar reglas y rangos para envío
+    function collectFilterRules() {
+        const rules = [];
+        document.querySelectorAll('.filter-rule').forEach(rule => {
+            const typeElement = rule.querySelector('.filter-type');
+            const valueElement = rule.querySelector('.filter-value');
+            
+            if (typeElement && valueElement) {
+                const typeText = typeElement.textContent;
+                const type = typeText.includes('De:') ? 'from' : 
+                             typeText.includes('Asunto:') ? 'subject' : 
+                             typeText.includes('Contenido:') ? 'body' : 'has-attachment';
+                             
+                rules.push({
+                    tipo: type,
+                    valor: valueElement.textContent
+                });
+            }
+        });
+        
+        return rules;
+    }
+    
+    function collectIpRanges() {
+        const ranges = [];
+        document.querySelectorAll('.ip-range').forEach(range => {
+            const valueElement = range.querySelector('.ip-value');
+            
+            if (valueElement) {
+                ranges.push({
+                    rango: valueElement.textContent,
+                    descripcion: ''
+                });
+            }
+        });
+        
+        return ranges;
+    }
+    
+    // Lógica para guardar configuración
+    function saveConfiguration() {
+        // Determinar qué pestaña está activa
+        const activeTab = document.querySelector('.nav-link.active').getAttribute('id');
+        const tabName = activeTab.replace('-tab', '');
+        
+        // Crear FormData según la pestaña activa
+        const formData = new FormData();
+        formData.append('tab', tabName);
+        formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+        
+        if (tabName === 'general') {
+            // Configuración general
+            formData.append('clientName', document.getElementById('clientName').value);
+            formData.append('clientNIT', document.getElementById('clientNIT').value);
+            formData.append('zona_horaria', document.getElementById('timezone').value);
+            formData.append('formato_fecha', document.getElementById('dateFormat').value);
+            formData.append('idioma', document.querySelector('.language-option.selected').querySelector('span').textContent.toLowerCase());
+            
+            formData.append('modulo_ingesta', document.getElementById('moduloIngesta').checked);
+            formData.append('modulo_extraccion', document.getElementById('moduloExtraccion').checked);
+            formData.append('modulo_flujo', document.getElementById('moduloFlujo').checked);
+            formData.append('modulo_pdf', document.getElementById('moduloPDF').checked);
+            
+            // Logo (si se cambió)
+            if (logoUpload && logoUpload.files.length > 0) {
+                formData.append('logo', logoUpload.files[0]);
+            }
+        } 
+        else if (tabName === 'correo') {
+            // Configuración de correo
+            formData.append('ingesta_habilitada', document.getElementById('ingestaEnabled').checked);
+            formData.append('correo_monitoreo', document.getElementById('emailMonitor').value);
+            formData.append('metodo_autenticacion', document.getElementById('authMethod').value);
+            
+            if (document.getElementById('authMethod').value === 'oauth') {
+                formData.append('client_id', document.getElementById('clientId').value);
+                formData.append('client_secret', document.getElementById('clientSecret').value);
+            }
+            
+            formData.append('carpeta_monitoreo', document.getElementById('folderMonitor').value);
+            formData.append('intervalo_verificacion', document.getElementById('checkInterval').value);
+            formData.append('marcar_leidos', document.getElementById('markAsRead').checked);
+            
+            // Reglas de filtro
+            formData.append('reglas_filtro', JSON.stringify(collectFilterRules()));
+        }
+        else if (tabName === 'seguridad') {
+            // Configuración de seguridad
+            formData.append('req_mayusculas', document.getElementById('requireUppercase').checked);
+            formData.append('req_numeros', document.getElementById('requireNumbers').checked);
+            formData.append('req_especiales', document.getElementById('requireSpecial').checked);
+            formData.append('longitud_min_password', document.getElementById('minLength').value);
+            formData.append('intentos_bloqueo', document.getElementById('lockAttempts').value);
+            formData.append('desbloqueo_automatico', document.getElementById('autoUnlock').checked);
+            
+            // Método 2FA
+            let twoFactorMethod = 'disabled';
+            if (document.getElementById('twoFactorEmail').checked) {
+                twoFactorMethod = 'email';
+            } else if (document.getElementById('twoFactorApp').checked) {
+                twoFactorMethod = 'app';
+            }
+            formData.append('metodo_2fa', twoFactorMethod);
+            
+            // Rangos IP
+            formData.append('rangos_ip', JSON.stringify(collectIpRanges()));
+        }
+        
+        // Enviar datos al servidor
+        fetch(window.location.pathname, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showSuccessMessage();
+            } else {
+                alert('Error al guardar la configuración: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error al guardar la configuración');
         });
     }
-
-    // Confirmar reautorización
+    
+    // Event listeners para botones de guardar
+    if (saveConfigBtn) {
+        saveConfigBtn.addEventListener('click', saveConfiguration);
+    }
+    
+    if (footerSaveBtn) {
+        footerSaveBtn.addEventListener('click', saveConfiguration);
+    }
+    
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', function() {
+            window.location.reload();
+        });
+    }
+    
+    // Reautorizar OAuth
+    const reauthorizeBtn = document.getElementById('reauthorizeBtn');
+    if (reauthorizeBtn) {
+        reauthorizeBtn.addEventListener('click', function() {
+            const modal = new bootstrap.Modal(document.getElementById('reauthorizeModal'));
+            modal.show();
+        });
+    }
+    
     const confirmReauthorizeBtn = document.getElementById('confirmReauthorizeBtn');
     if (confirmReauthorizeBtn) {
         confirmReauthorizeBtn.addEventListener('click', function() {
-            // Simular proceso de reautorización
-            this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Procesando...';
-            this.disabled = true;
+            // Aquí iría la lógica para reautorizar OAuth
+            alert('Proceso de reautorización iniciado. Se abrirá una ventana de Google para confirmar el acceso.');
             
-            setTimeout(function() {
-                // Cerrar modal
-                bootstrap.Modal.getInstance(document.getElementById('reauthorizeModal')).hide();
-                
-                // Mostrar ventana de autorización de Google (simulado)
-                window.open('/auth/google-oauth', 'oauth_window', 'width=600,height=700');
-                
-                // Restablecer botón
-                confirmReauthorizeBtn.innerHTML = '<i class="fas fa-sync-alt"></i> Sí, Reautorizar';
-                confirmReauthorizeBtn.disabled = false;
-            }, 1000);
+            // Cerrar modal
+            bootstrap.Modal.getInstance(document.getElementById('reauthorizeModal')).hide();
         });
     }
-
-    // Guardar configuración
-    if (saveConfigBtn) {
-        saveConfigBtn.addEventListener('click', function() {
-            saveConfiguration();
-        });
-    }
-
-    if (footerSaveBtn) {
-        footerSaveBtn.addEventListener('click', function() {
-            saveConfiguration();
-        });
-    }
-
-    function saveConfiguration() {
-        // Aquí iría la lógica real para enviar los datos al servidor
-        // Por ahora solo mostramos una alerta de éxito
-        
-        // Mostrar spinner en botones de guardar
-        saveConfigBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
-        saveConfigBtn.disabled = true;
-        
-        footerSaveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
-        footerSaveBtn.disabled = true;
-        
-        // Simular petición al servidor
-        setTimeout(function() {
-            // Reestablecer botones
-            saveConfigBtn.innerHTML = '<i class="fas fa-save"></i> Guardar Cambios';
-            saveConfigBtn.disabled = false;
-            
-            footerSaveBtn.innerHTML = '<i class="fas fa-save"></i> Guardar Cambios';
-            footerSaveBtn.disabled = false;
-            
-            // Mostrar alerta de éxito
-            successAlert.classList.add('show');
-            
-            // Ocultar alerta después de 5 segundos
-            setTimeout(function() {
-                successAlert.classList.remove('show');
-            }, 5000);
-            
-            // Hacer scroll al inicio para ver la alerta
-            window.scrollTo({top: 0, behavior: 'smooth'});
-        }, 1500);
-    }
-
-    // Cancelar cambios
-    if (cancelBtn) {
-        cancelBtn.addEventListener('click', function() {
-            if (confirm('¿Estás seguro de cancelar los cambios? Los cambios no guardados se perderán.')) {
-                // Recargar la página para restaurar valores originales
-                window.location.reload();
-            }
-        });
-    }
-
-    // Cambiar tenant (solo para Super Admin)
-    if (tenantSelect) {
-        tenantSelect.addEventListener('change', function() {
-            const tenantId = this.value;
-            if (tenantId) {
-                // Redireccionar a la configuración del tenant seleccionado
-                window.location.href = `/configuracion/${tenantId}/`;
-            }
-        });
-    }
-
-    // Cerrar sesiones activas
-    document.querySelectorAll('.security-sessions .btn-danger').forEach(button => {
-        if (!button.closest('.text-end')) { // Excluir el botón "Cerrar todas las sesiones"
-            button.addEventListener('click', function() {
-                const row = this.closest('tr');
-                
-                // Simular cierre de sesión
-                button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-                button.disabled = true;
-                
-                setTimeout(() => {
-                    row.style.opacity = '0.5';
-                    row.style.textDecoration = 'line-through';
-                    button.innerHTML = 'Cerrada';
-                    button.classList.remove('btn-danger');
-                    button.classList.add('btn-secondary');
-                    button.disabled = true;
-                }, 1000);
-            });
+    
+    // Inicialización al cargar la página
+    // Mostrar/ocultar el tipo de autenticación correcto
+    if (authMethodSelect) {
+        const currentMethod = authMethodSelect.value;
+        if (currentMethod === 'oauth') {
+            oauthCredentials.style.display = 'block';
+            serviceCredentials.style.display = 'none';
+        } else {
+            oauthCredentials.style.display = 'none';
+            serviceCredentials.style.display = 'block';
         }
-    });
-
-    // Botón de "Cerrar todas las sesiones"
-    const closeAllSessionsBtn = document.querySelector('.security-sessions .text-end .btn-danger');
-    if (closeAllSessionsBtn) {
-        closeAllSessionsBtn.addEventListener('click', function() {
-            if (confirm('¿Está seguro que desea cerrar todas las otras sesiones activas?')) {
-                // Simular cierre de todas las sesiones
-                this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Procesando...';
-                this.disabled = true;
-                
-                const sessionRows = document.querySelectorAll('.security-sessions tbody tr:not(.active-session)');
-                
-                setTimeout(() => {
-                    sessionRows.forEach(row => {
-                        row.style.opacity = '0.5';
-                        row.style.textDecoration = 'line-through';
-                        const btn = row.querySelector('.btn-danger');
-                        if (btn) {
-                            btn.innerHTML = 'Cerrada';
-                            btn.classList.remove('btn-danger');
-                            btn.classList.add('btn-secondary');
-                            btn.disabled = true;
-                        }
-                    });
-                    
-                    this.innerHTML = '<i class="fas fa-check"></i> Sesiones Cerradas';
-                    this.classList.remove('btn-danger');
-                    this.classList.add('btn-success');
-                    
-                    // Restablecer después de 3 segundos
-                    setTimeout(() => {
-                        this.innerHTML = '<i class="fas fa-power-off"></i> Cerrar Todas las Sesiones';
-                        this.classList.remove('btn-success');
-                        this.classList.add('btn-danger');
-                        this.disabled = false;
-                    }, 3000);
-                }, 1500);
-            }
-        });
     }
-
-    // Manejo de sincronización de correo ahora
-    const syncNowBtn = document.querySelector('.history-timeline').nextElementSibling.querySelector('.btn-primary');
+    
+    // Inicializar tooltips y popovers de Bootstrap
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    const tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+    
+    // Sincronización de correo (botón en historial)
+    const syncNowBtn = document.querySelector('.btn[data-action="sync-now"]');
     if (syncNowBtn) {
         syncNowBtn.addEventListener('click', function() {
-            // Mostrar spinner
+            // Mostrar spinner o indicador de carga
             this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sincronizando...';
             this.disabled = true;
             
-            // Simular sincronización
+            // Simulación de sincronización (esto sería una llamada real a la API)
             setTimeout(() => {
-                // Crear nuevo elemento de timeline
-                const timelineItem = document.createElement('div');
-                timelineItem.className = 'timeline-item';
-                timelineItem.innerHTML = `
+                // Actualizar UI después de sincronización
+                this.innerHTML = '<i class="fas fa-sync-alt"></i> Sincronizar Ahora';
+                this.disabled = false;
+                
+                // Añadir nueva entrada al historial
+                const timelineContainer = document.querySelector('.history-timeline');
+                const newItem = document.createElement('div');
+                newItem.className = 'timeline-item';
+                
+                const now = new Date();
+                const formattedDate = now.toLocaleDateString('es-CO') + ' ' + 
+                                      now.getHours().toString().padStart(2, '0') + ':' + 
+                                      now.getMinutes().toString().padStart(2, '0') + ':' + 
+                                      now.getSeconds().toString().padStart(2, '0');
+                
+                newItem.innerHTML = `
                     <div class="timeline-marker success"></div>
                     <div class="timeline-content">
-                        <div class="timeline-date">15/04/2025 ${new Date().getHours()}:${String(new Date().getMinutes()).padStart(2, '0')}:${String(new Date().getSeconds()).padStart(2, '0')}</div>
+                        <div class="timeline-date">${formattedDate}</div>
                         <div class="timeline-title">Sincronización exitosa</div>
-                        <div class="timeline-details">5 correos procesados, 0 nuevas glosas</div>
+                        <div class="timeline-details">5 correos procesados, 1 nuevas glosas</div>
                     </div>
                 `;
                 
                 // Insertar al inicio
-                const timeline = document.querySelector('.history-timeline');
-                timeline.insertBefore(timelineItem, timeline.firstChild);
+                if (timelineContainer.firstChild) {
+                    timelineContainer.insertBefore(newItem, timelineContainer.firstChild);
+                } else {
+                    timelineContainer.appendChild(newItem);
+                }
                 
-                // Restablecer botón
-                this.innerHTML = '<i class="fas fa-sync-alt"></i> Sincronizar Ahora';
-                this.disabled = false;
+                // Mostrar notificación
+                showSuccessMessage();
             }, 2000);
         });
     }
-
-    // Inicializar tooltips de Bootstrap
-    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-        return new bootstrap.Tooltip(tooltipTriggerEl);
-    });
     
-    // Ocultar elementos inactivos con animación
-    document.querySelectorAll('.module-inactive').forEach(item => {
-        item.style.opacity = '0.6';
-    });
-    
-    // Efecto de hover para las tarjetas de configuración
-    document.querySelectorAll('.config-card').forEach(card => {
-        card.addEventListener('mouseenter', function() {
-            this.style.transform = 'translateY(-5px)';
-            this.style.boxShadow = '0 10px 20px rgba(0, 0, 0, 0.1)';
-        });
-        
-        card.addEventListener('mouseleave', function() {
-            this.style.transform = 'translateY(0)';
-            this.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.05)';
-        });
-    });
-    
-    // Animación del punto de estado
-    const statusCircle = document.querySelector('.status-value.text-success i');
-    if (statusCircle) {
-        setInterval(() => {
-            statusCircle.style.opacity = '0.4';
-            setTimeout(() => {
-                statusCircle.style.opacity = '1';
-            }, 800);
-        }, 2000);
-    }
-    
-    // Validación de formatos específicos
-    const ipRangeInput = document.getElementById('ipRange');
-    if (ipRangeInput) {
-        ipRangeInput.addEventListener('blur', function() {
-            const value = this.value.trim();
-            const ipv4Regex = /^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\/([0-9]|[1-2][0-9]|3[0-2]))?$/;
+    // Manejar sesiones activas (cerrar sesión)
+    document.querySelectorAll('.btn-danger[data-action="close-session"]').forEach(button => {
+        button.addEventListener('click', function() {
+            const sessionRow = this.closest('tr');
             
-            if (value && !ipv4Regex.test(value)) {
-                this.classList.add('is-invalid');
-                if (!this.nextElementSibling || !this.nextElementSibling.classList.contains('invalid-feedback')) {
-                    const feedback = document.createElement('div');
-                    feedback.className = 'invalid-feedback';
-                    feedback.textContent = 'Formato IPv4 CIDR no válido. Ejemplo: 192.168.1.0/24';
-                    this.parentNode.insertBefore(feedback, this.nextSibling);
-                }
-            } else {
-                this.classList.remove('is-invalid');
-                if (this.nextElementSibling && this.nextElementSibling.classList.contains('invalid-feedback')) {
-                    this.nextElementSibling.remove();
-                }
-            }
-        });
-    }
-    
-    // Gestionar visibilidad de módulos
-    document.querySelectorAll('.form-check-input[id^="modulo"]').forEach(checkbox => {
-        checkbox.addEventListener('change', function() {
-            const moduloId = this.id.replace('modulo', '').toLowerCase();
-            
-            // Actualizar tab relacionada si existe
-            const tab = document.querySelector(`#${moduloId}-tab`);
-            if (tab) {
-                if (this.checked) {
-                    tab.classList.remove('disabled');
-                    tab.removeAttribute('disabled');
-                } else {
-                    tab.classList.add('disabled');
-                    tab.setAttribute('disabled', 'disabled');
-                    
-                    // Si el tab deshabilitado está activo, cambiar a General
-                    if (tab.classList.contains('active')) {
-                        document.querySelector('#general-tab').click();
-                    }
-                }
+            // Confirmar
+            if (confirm('¿Está seguro que desea cerrar esta sesión?')) {
+                // Simular cierre de sesión (esto sería una llamada real a la API)
+                sessionRow.classList.add('table-danger');
+                setTimeout(() => {
+                    sessionRow.remove();
+                }, 500);
             }
         });
     });
     
-    // Botón para descargar respaldo
-    const backupBtn = document.querySelector('.status-actions .btn-outline-primary');
-    if (backupBtn) {
-        backupBtn.addEventListener('click', function() {
-            this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generando...';
-            this.disabled = true;
-            
-            // Simular descarga de respaldo
-            setTimeout(() => {
-                // Crear un enlace de descarga ficticio
-                const link = document.createElement('a');
-                link.href = 'data:text/plain;charset=utf-8,contenido_del_respaldo';
-                link.download = `respaldo_zentraflow_${new Date().toISOString().slice(0,10)}.zip`;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                
-                // Restaurar botón
-                this.innerHTML = '<i class="fas fa-download"></i> Descargar Respaldo';
-                this.disabled = false;
-            }, 1500);
-        });
-    }
-    
-    // Cambiar tab via hash en URL (para permitir enlaces directos a pestañas)
-    function activateTabFromHash() {
-        const hash = window.location.hash;
-        if (hash) {
-            const tabId = hash.replace('#', '');
-            const tab = document.querySelector(`#${tabId}-tab`);
-            if (tab && !tab.classList.contains('disabled')) {
-                tab.click();
+    // Cerrar todas las sesiones
+    const closeAllSessionsBtn = document.querySelector('.btn-danger[data-action="close-all-sessions"]');
+    if (closeAllSessionsBtn) {
+        closeAllSessionsBtn.addEventListener('click', function() {
+            // Confirmar
+            if (confirm('¿Está seguro que desea cerrar todas las sesiones excepto la actual?')) {
+                // Simular cierre de sesiones (esto sería una llamada real a la API)
+                document.querySelectorAll('tr:not(.active-session)').forEach(row => {
+                    row.classList.add('table-danger');
+                    setTimeout(() => {
+                        row.remove();
+                    }, 500);
+                });
             }
-        }
+        });
     }
-    
-    // Activar tab basado en hash al cargar
-    activateTabFromHash();
-    
-    // Actualizar hash cuando cambia de tab
-    document.querySelectorAll('button[data-bs-toggle="tab"]').forEach(tab => {
-        tab.addEventListener('shown.bs.tab', function (event) {
-            const id = event.target.id.replace('-tab', '');
-            history.replaceState(null, null, `#${id}`);
-        });
-    });
-    
-    // Detectar cambios sin guardar antes de salir de la página
-    let formChanged = false;
-    
-    document.querySelectorAll('input, select, textarea').forEach(input => {
-        input.addEventListener('change', function() {
-            formChanged = true;
-        });
-    });
-    
-    window.addEventListener('beforeunload', function(e) {
-        if (formChanged) {
-            // Mensaje estándar que será mostrado por el navegador
-            const message = '¿Está seguro de abandonar la página? Los cambios no guardados se perderán.';
-            e.returnValue = message;
-            return message;
-        }
-    });
-    
-    // Marcar formulario como guardado cuando se guarda
-    saveConfigBtn.addEventListener('click', function() {
-        formChanged = false;
-    });
-    
-    footerSaveBtn.addEventListener('click', function() {
-        formChanged = false;
-    });
 });
