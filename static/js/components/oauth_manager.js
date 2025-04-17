@@ -16,6 +16,7 @@ class OAuthManager {
         this.authorizeBtn = document.getElementById('authorizeBtn');
         this.reauthorizeBtn = document.getElementById('reauthorizeBtn');
         this.revokeBtn = document.getElementById('revokeBtn');
+        this.saveOAuthConfigBtn = document.getElementById('saveOAuthConfigBtn');
         
         this.authStatusEl = document.getElementById('authStatus');
         this.lastAuthTimeEl = document.getElementById('lastAuthTime');
@@ -44,6 +45,11 @@ class OAuthManager {
             this.revokeBtn.addEventListener('click', this.revokeAccess.bind(this));
         }
         
+        // Botón para guardar configuración OAuth
+        if (this.saveOAuthConfigBtn) {
+            this.saveOAuthConfigBtn.addEventListener('click', this.saveSettingsAndShowMessage.bind(this));
+        }
+        
         // Detectar cambios en los inputs que requieren reautorización
         if (this.clientIdInput) {
             this.clientIdInput.addEventListener('change', this.onCredentialsChanged.bind(this));
@@ -55,15 +61,15 @@ class OAuthManager {
         
         // Detectar cambios en configuración que no requieren reautorización
         if (this.folderMonitorSelect) {
-            this.folderMonitorSelect.addEventListener('change', this.saveSettings.bind(this));
+            this.folderMonitorSelect.addEventListener('change', this.onConfigChanged.bind(this));
         }
         
         if (this.checkIntervalInput) {
-            this.checkIntervalInput.addEventListener('change', this.saveSettings.bind(this));
+            this.checkIntervalInput.addEventListener('change', this.onConfigChanged.bind(this));
         }
         
         if (this.markAsReadSwitch) {
-            this.markAsReadSwitch.addEventListener('change', this.saveSettings.bind(this));
+            this.markAsReadSwitch.addEventListener('change', this.onConfigChanged.bind(this));
         }
         
         // Verificar estado de autorización al cargar
@@ -169,7 +175,7 @@ class OAuthManager {
         }
     }
 
-    startAuthFlow(event) {  // Añadir el parámetro event
+    startAuthFlow(event) {  
         // Obtener valores actuales
         const clientId = this.clientIdInput ? this.clientIdInput.value.trim() : '';
         const clientSecret = this.clientSecretInput ? this.clientSecretInput.value.trim() : '';
@@ -182,6 +188,11 @@ class OAuthManager {
         
         // Mostrar estado de carga
         const button = event ? event.target : this.authorizeBtn || this.reauthorizeBtn;
+        if (!button) {
+            console.error('No se pudo determinar el botón que inició la acción');
+            return;
+        }
+        
         const originalText = button.innerHTML;
         button.disabled = true;
         button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Conectando...';
@@ -244,7 +255,7 @@ class OAuthManager {
             });
     }
 
-    revokeAccess() {
+    revokeAccess(event) {
         if (!confirm('¿Está seguro que desea revocar el acceso a esta cuenta de correo?')) {
             return;
         }
@@ -303,11 +314,28 @@ class OAuthManager {
         });
     }
 
-    
     onCredentialsChanged() {
         // Si se cambian las credenciales, mostrar mensaje de que se requiere reautorización
         if (this.authorized) {
             this.showMessage('warning', 'Has modificado las credenciales, necesitarás reautorizar la conexión');
+        }
+    }
+
+    onConfigChanged() {
+        // Informar al usuario que los cambios requieren guardado
+        const saveBtn = this.saveOAuthConfigBtn;
+        if (saveBtn) {
+            // Visual feedback que hay cambios pendientes
+            saveBtn.classList.add('btn-warning');
+            saveBtn.classList.remove('btn-primary');
+            
+            // Si después de 1.5s no se restaura automáticamente, restauramos nosotros
+            setTimeout(() => {
+                if (saveBtn.classList.contains('btn-warning')) {
+                    saveBtn.classList.remove('btn-warning');
+                    saveBtn.classList.add('btn-primary');
+                }
+            }, 1500);
         }
     }
 
@@ -367,6 +395,46 @@ class OAuthManager {
         });
     }
 
+    saveSettingsAndShowMessage(event) {
+        if (event) {
+            event.preventDefault();
+        }
+        
+        // Mostrar estado de carga
+        const button = event ? event.target : this.saveOAuthConfigBtn;
+        if (!button) {
+            console.error('No se pudo determinar el botón de guardado');
+            return Promise.reject(new Error('No se pudo determinar el botón de guardado'));
+        }
+        
+        const originalText = button.innerHTML;
+        const originalClass = button.className;
+        
+        button.disabled = true;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
+        
+        return this.saveSettings()
+            .then(result => {
+                if (result.success) {
+                    this.showMessage('success', 'Configuración de ingesta de correo guardada correctamente');
+                    return result;
+                } else {
+                    throw new Error(result.message || 'Error al guardar configuración');
+                }
+            })
+            .catch(error => {
+                console.error('Error al guardar configuración OAuth:', error);
+                this.showMessage('error', error.message || 'Error al guardar configuración');
+                throw error;
+            })
+            .finally(() => {
+                // Restaurar botón
+                button.disabled = false;
+                button.innerHTML = originalText;
+                button.className = originalClass;
+            });
+    }
+
     handleOAuthMessage(event) {
         // Verificar origen del mensaje (seguridad)
         if (event.origin !== window.location.origin) {
@@ -388,14 +456,23 @@ class OAuthManager {
 
     showMessage(type, message) {
         // Mostrar mensaje usando alertas existentes
-        const alertId = type === 'error' ? 'errorAlert' : 'successAlert';
+        const alertId = type === 'error' ? 'errorAlert' : (type === 'warning' ? 'warningAlert' : 'successAlert');
         const alertEl = document.getElementById(alertId);
         
         if (alertEl) {
             const messageContainer = alertEl.querySelector('.alert-message');
             if (messageContainer) {
                 const strongEl = messageContainer.querySelector('strong');
-                const strongText = strongEl ? strongEl.textContent : (type === 'error' ? 'Error:' : '¡Éxito!');
+                let strongText = '';
+                
+                if (strongEl) {
+                    strongText = strongEl.textContent;
+                } else {
+                    if (type === 'error') strongText = 'Error:';
+                    else if (type === 'warning') strongText = 'Advertencia:';
+                    else strongText = '¡Éxito!';
+                }
+                
                 messageContainer.innerHTML = `<strong>${strongText}</strong> ${message}`;
                 alertEl.classList.add('show');
                 
@@ -404,16 +481,21 @@ class OAuthManager {
                     alertEl.classList.remove('show');
                 }, 5000);
             } else {
-                alert(`${type === 'error' ? 'Error' : 'Éxito'}: ${message}`);
+                alert(`${type === 'error' ? 'Error' : (type === 'warning' ? 'Advertencia' : 'Éxito')}: ${message}`);
             }
         } else {
-            alert(`${type === 'error' ? 'Error' : 'Éxito'}: ${message}`);
+            alert(`${type === 'error' ? 'Error' : (type === 'warning' ? 'Advertencia' : 'Éxito')}: ${message}`);
         }
     }
 }
 
 // Inicializar cuando el DOM esté listo
 document.addEventListener('DOMContentLoaded', function() {
+    // Inicializar OAuthManager si estamos en la página de configuración
+    if (document.getElementById('correo-tab')) {
+        window.oauthManager = new OAuthManager();
+    }
+    
     // Toggle para mostrar/ocultar contraseñas
     const togglePasswordBtns = document.querySelectorAll('.toggle-password');
     togglePasswordBtns.forEach(btn => {

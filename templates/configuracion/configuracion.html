@@ -5,7 +5,7 @@
 
 {% block extra_css %}
     <link rel="stylesheet" href="{% static 'css/components/configuracion.css' %}">
-    <script src="{% static 'js/components/oauth_manager.js' %}"></script>
+    
 {% endblock %}
 
 {% block content %}
@@ -28,9 +28,6 @@
                 </select>
             </div>
             {% endif %}
-            <button class="btn-save-config" id="saveConfigBtn">
-                <i class="fas fa-save"></i> Guardar Cambios
-            </button>
         </div>
     </div>
     
@@ -89,6 +86,9 @@
             <div class="config-card">
                 <div class="config-card-header">
                     <h3><i class="fas fa-building"></i> Información del Cliente</h3>
+                    <button class="btn btn-primary" id="saveClientInfoBtn">
+                        <i class="fas fa-save"></i> Guardar Información
+                    </button>
                 </div>
                 <div class="config-card-body">
                     <div class="row">
@@ -183,6 +183,9 @@
             <div class="config-card">
                 <div class="config-card-header">
                     <h3><i class="fas fa-sliders-h"></i> Preferencias Generales</h3>
+                    <button class="btn btn-primary" id="savePreferencesBtn">
+                        <i class="fas fa-save"></i> Guardar Preferencias
+                    </button>
                 </div>
                 <div class="config-card-body">
                     <div class="row">
@@ -238,9 +241,14 @@
             <div class="config-card">
                 <div class="config-card-header">
                     <h3><i class="fas fa-envelope"></i> Configuración de Ingesta de Correo</h3>
-                    <div class="form-check form-switch">
-                        <input class="form-check-input" type="checkbox" id="ingestaEnabled" checked>
-                        <label class="form-check-label" for="ingestaEnabled">Habilitar Ingesta</label>
+                    <div class="d-flex align-items-center">
+                        <div class="form-check form-switch me-3">
+                            <input class="form-check-input" type="checkbox" id="ingestaEnabled" checked>
+                            <label class="form-check-label" for="ingestaEnabled">Habilitar Ingesta</label>
+                        </div>
+                        <button class="btn btn-primary" id="saveOAuthConfigBtn">
+                            <i class="fas fa-save"></i> Guardar Configuración
+                        </button>
                     </div>
                 </div>
                 <div class="config-card-body">
@@ -692,4 +700,5 @@
 
 {% block extra_js %}
 <script src="{% static 'js/components/configuracion.js' %}"></script>
+<script src="{% static 'js/components/oauth_manager.js' %}"></script>
 {% endblock %}
