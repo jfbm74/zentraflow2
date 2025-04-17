@@ -4,8 +4,7 @@
 {% block title %}ZentraFlow - Configuración del Cliente{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/components/configuracion.css' %}">
-
+    <link rel="stylesheet" href="{% static 'css/components/configuracion.css' %}">
 {% endblock %}
 
 {% block content %}
@@ -28,9 +27,6 @@
                 </select>
             </div>
             {% endif %}
-            <button class="btn-save-config" id="saveConfigBtn">
-                <i class="fas fa-save"></i> Guardar Cambios
-            </button>
         </div>
     </div>
     
@@ -89,6 +85,9 @@
             <div class="config-card">
                 <div class="config-card-header">
                     <h3><i class="fas fa-building"></i> Información del Cliente</h3>
+                    <button class="btn btn-primary" id="saveClientInfoBtn">
+                        <i class="fas fa-save"></i> Guardar Información
+                    </button>
                 </div>
                 <div class="config-card-body">
                     <div class="row">
@@ -183,6 +182,9 @@
             <div class="config-card">
                 <div class="config-card-header">
                     <h3><i class="fas fa-sliders-h"></i> Preferencias Generales</h3>
+                    <button class="btn btn-primary" id="savePreferencesBtn">
+                        <i class="fas fa-save"></i> Guardar Preferencias
+                    </button>
                 </div>
                 <div class="config-card-body">
                     <div class="row">
@@ -231,16 +233,21 @@
             </div>
         </div>
     </div>
-
+    
     <!-- Pestaña Ingesta de Correo -->
     <div class="tab-pane fade" id="correo" role="tabpanel" aria-labelledby="correo-tab">
         <div class="config-section">
             <div class="config-card">
                 <div class="config-card-header">
                     <h3><i class="fas fa-envelope"></i> Configuración de Ingesta de Correo</h3>
-                    <div class="form-check form-switch">
-                        <input class="form-check-input" type="checkbox" id="ingestaEnabled" checked>
-                        <label class="form-check-label" for="ingestaEnabled">Habilitar Ingesta</label>
+                    <div class="d-flex align-items-center">
+                        <div class="form-check form-switch me-3">
+                            <input class="form-check-input" type="checkbox" id="ingestaEnabled" checked>
+                            <label class="form-check-label" for="ingestaEnabled">Habilitar Ingesta</label>
+                        </div>
+                        <button class="btn btn-primary" id="saveOAuthConfigBtn">
+                            <i class="fas fa-save"></i> Guardar Configuración
+                        </button>
                     </div>
                 </div>
                 <div class="config-card-body">
@@ -265,25 +272,38 @@
                             <div id="oauthCredentials">
                                 <div class="mb-4">
                                     <label for="clientId" class="form-label">Client ID</label>
-                                    <input type="text" class="form-control" id="clientId" value="123456789-abcdef.apps.googleusercontent.com">
+                                    <input type="text" class="form-control" id="clientId" placeholder="123456789-abcdef.apps.googleusercontent.com">
+                                    <div class="form-text">Client ID de Google Cloud Project</div>
                                 </div>
                                 
                                 <div class="mb-4">
                                     <label for="clientSecret" class="form-label">Client Secret</label>
                                     <div class="input-group">
-                                        <input type="password" class="form-control" id="clientSecret" value="********">
+                                        <input type="password" class="form-control" id="clientSecret" placeholder="GOCSPX-xxxxxxxxxxxxxx">
                                         <button class="btn btn-outline-secondary toggle-password" type="button">
                                             <i class="fas fa-eye"></i>
                                         </button>
                                     </div>
+                                    <div class="form-text">Client Secret de Google Cloud Project</div>
                                 </div>
                                 
                                 <div class="oauth-status mb-4">
                                     <label class="form-label">Estado de Autorización:</label>
-                                    <span class="badge bg-success"><i class="fas fa-check-circle"></i> Autorizado</span>
-                                    <button class="btn btn-primary btn-sm ms-2" id="reauthorizeBtn">
+                                    <span id="authStatus" class="badge bg-danger"><i class="fas fa-times-circle"></i> No autorizado</span>
+                                    <button class="btn btn-primary btn-sm ms-2" id="authorizeBtn">
+                                        <i class="fas fa-key"></i> Autorizar
+                                    </button>
+                                    <button class="btn btn-warning btn-sm ms-2" id="reauthorizeBtn" style="display: none;">
                                         <i class="fas fa-sync-alt"></i> Reautorizar
                                     </button>
+                                    <button class="btn btn-danger btn-sm ms-2" id="revokeBtn" style="display: none;">
+                                        <i class="fas fa-times"></i> Revocar
+                                    </button>
+                                </div>
+                                
+                                <div class="mb-4">
+                                    <label class="form-label">Última Autorización:</label>
+                                    <span id="lastAuthTime">Nunca</span>
                                 </div>
                             </div>
                             
@@ -342,29 +362,6 @@
                                     <label class="form-check-label" for="markAsRead">Marcar correos como leídos</label>
                                 </div>
                                 <div class="form-text">Marcar automáticamente los correos procesados como leídos</div>
-                            </div>
-                            
-                            <div class="email-filter-rules">
-                                <label class="form-label">Reglas de Filtrado de Correo</label>
-                                <div class="filter-rule">
-                                    <div class="filter-type">De:</div>
-                                    <div class="filter-value">*@eps-salud.com</div>
-                                    <div class="filter-actions">
-                                        <button class="filter-edit"><i class="fas fa-edit"></i></button>
-                                        <button class="filter-delete"><i class="fas fa-times"></i></button>
-                                    </div>
-                                </div>
-                                <div class="filter-rule">
-                                    <div class="filter-type">Asunto:</div>
-                                    <div class="filter-value">*GLOSA*</div>
-                                    <div class="filter-actions">
-                                        <button class="filter-edit"><i class="fas fa-edit"></i></button>
-                                        <button class="filter-delete"><i class="fas fa-times"></i></button>
-                                    </div>
-                                </div>
-                                <button class="btn btn-outline-primary btn-sm mt-2 add-filter-btn">
-                                    <i class="fas fa-plus"></i> Agregar Regla
-                                </button>
                             </div>
                         </div>
                     </div>
@@ -592,38 +589,6 @@
     </div>
 </div>
 
-<!-- Modal para editar regla de filtro -->
-<div class="modal fade" id="filterRuleModal" tabindex="-1" aria-labelledby="filterRuleModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="filterRuleModalLabel">Editar Regla de Filtro</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <div class="mb-3">
-                    <label for="filterType" class="form-label">Tipo de Filtro</label>
-                    <select class="form-select" id="filterType">
-                        <option value="from">De (Remitente)</option>
-                        <option value="subject">Asunto</option>
-                        <option value="body">Contenido</option>
-                        <option value="has-attachment">Tiene Adjunto</option>
-                    </select>
-                </div>
-                <div class="mb-3">
-                    <label for="filterValue" class="form-label">Valor</label>
-                    <input type="text" class="form-control" id="filterValue" placeholder="Ej: *@empresa.com, *GLOSA*">
-                    <div class="form-text">Usa * como comodín para coincidencias parciales</div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-primary" id="saveFilterBtn">Guardar</button>
-            </div>
-        </div>
-    </div>
-</div>
-
 <!-- Modal para agregar rango IP -->
 <div class="modal fade" id="ipRangeModal" tabindex="-1" aria-labelledby="ipRangeModalLabel" aria-hidden="true">
     <div class="modal-dialog">
@@ -678,4 +643,5 @@
 
 {% block extra_js %}
 <script src="{% static 'js/components/configuracion.js' %}"></script>
+<script src="{% static 'js/components/oauth_manager.js' %}"></script>
 {% endblock %}
