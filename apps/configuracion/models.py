@@ -53,3 +53,38 @@ class TenantConfig(models.Model):
                 # Si ya existe, actualizar en lugar de crear uno nuevo
                 self.pk = existing.pk
         super().save(*args, **kwargs)
+
+# apps/configuracion/models.py (añadir al archivo existente)
+
+class EmailOAuthCredentials(models.Model):
+    """Modelo para almacenar credenciales OAuth 2.0 de cuentas de correo por tenant."""
+    tenant = models.OneToOneField('tenants.Tenant', on_delete=models.CASCADE, related_name='oauth_credentials')
+    client_id = models.CharField(max_length=255, verbose_name="Client ID")
+    client_secret = models.CharField(max_length=255, verbose_name="Client Secret")
+    redirect_uri = models.CharField(max_length=255, verbose_name="URI de Redirección")
+    email_address = models.EmailField(verbose_name="Dirección de Correo Monitoreada", null=True, blank=True)
+    access_token = models.TextField(verbose_name="Token de Acceso", null=True, blank=True)
+    refresh_token = models.TextField(verbose_name="Token de Actualización", null=True, blank=True)
+    token_expiry = models.DateTimeField(verbose_name="Expiración del Token", null=True, blank=True)
+    authorized = models.BooleanField(default=False, verbose_name="Autorizado")
+    last_authorized = models.DateTimeField(null=True, blank=True, verbose_name="Última Autorización")
+    folder_to_monitor = models.CharField(max_length=100, default="INBOX", verbose_name="Carpeta a Monitorear")
+    check_interval = models.IntegerField(default=5, verbose_name="Intervalo de Verificación (minutos)")
+    mark_as_read = models.BooleanField(default=True, verbose_name="Marcar como Leído")
+
+    class Meta:
+        app_label = 'configuracion'
+        verbose_name = "Credenciales OAuth para Correo"
+        verbose_name_plural = "Credenciales OAuth para Correo"
+    
+    def __str__(self):
+        return f"OAuth de {self.email_address or 'Sin configurar'} ({self.tenant.name})"
+    
+    def is_token_valid(self):
+        """Verifica si el token actual es válido."""
+        if not self.access_token or not self.token_expiry:
+            return False
+        
+        # Consideramos el token como válido si falta más de 5 minutos para que expire
+        from django.utils import timezone
+        return self.token_expiry > timezone.now() + timezone.timedelta(minutes=5)

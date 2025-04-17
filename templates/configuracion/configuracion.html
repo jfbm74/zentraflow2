@@ -4,8 +4,8 @@
 {% block title %}ZentraFlow - Configuración del Cliente{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/components/configuracion.css' %}">
-
+    <link rel="stylesheet" href="{% static 'css/components/configuracion.css' %}">
+    <script src="{% static 'js/components/oauth_manager.js' %}"></script>
 {% endblock %}
 
 {% block content %}
@@ -262,28 +262,42 @@
                             </div>
                             
                             <!-- Credenciales OAuth 2.0 -->
+                            <!-- Dentro del div con id="oauthCredentials" -->
                             <div id="oauthCredentials">
                                 <div class="mb-4">
                                     <label for="clientId" class="form-label">Client ID</label>
-                                    <input type="text" class="form-control" id="clientId" value="123456789-abcdef.apps.googleusercontent.com">
+                                    <input type="text" class="form-control" id="clientId" placeholder="123456789-abcdef.apps.googleusercontent.com">
+                                    <div class="form-text">Client ID de Google Cloud Project</div>
                                 </div>
                                 
                                 <div class="mb-4">
                                     <label for="clientSecret" class="form-label">Client Secret</label>
                                     <div class="input-group">
-                                        <input type="password" class="form-control" id="clientSecret" value="********">
+                                        <input type="password" class="form-control" id="clientSecret" placeholder="GOCSPX-xxxxxxxxxxxxxx">
                                         <button class="btn btn-outline-secondary toggle-password" type="button">
                                             <i class="fas fa-eye"></i>
                                         </button>
                                     </div>
+                                    <div class="form-text">Client Secret de Google Cloud Project</div>
                                 </div>
                                 
                                 <div class="oauth-status mb-4">
                                     <label class="form-label">Estado de Autorización:</label>
-                                    <span class="badge bg-success"><i class="fas fa-check-circle"></i> Autorizado</span>
-                                    <button class="btn btn-primary btn-sm ms-2" id="reauthorizeBtn">
+                                    <span id="authStatus" class="badge bg-danger"><i class="fas fa-times-circle"></i> No autorizado</span>
+                                    <button class="btn btn-primary btn-sm ms-2" id="authorizeBtn">
+                                        <i class="fas fa-key"></i> Autorizar
+                                    </button>
+                                    <button class="btn btn-warning btn-sm ms-2" id="reauthorizeBtn" style="display: none;">
                                         <i class="fas fa-sync-alt"></i> Reautorizar
                                     </button>
+                                    <button class="btn btn-danger btn-sm ms-2" id="revokeBtn" style="display: none;">
+                                        <i class="fas fa-times"></i> Revocar
+                                    </button>
+                                </div>
+                                
+                                <div class="mb-4">
+                                    <label class="form-label">Última Autorización:</label>
+                                    <span id="lastAuthTime">Nunca</span>
                                 </div>
                             </div>
                             

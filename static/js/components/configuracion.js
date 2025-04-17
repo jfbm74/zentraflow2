@@ -286,3 +286,86 @@ document.addEventListener('DOMContentLoaded', function() {
     // Inicializar otros componentes
     initializeOtherComponents();
 });
+
+// Añadir al archivo js/components/configuracion.js
+
+// Compatibilidad con el gestor OAuth
+document.addEventListener('DOMContentLoaded', function() {
+    // Asegurarse de que los cambios en la pestaña de correo se guarden
+    const saveConfigBtn = document.getElementById('saveConfigBtn');
+    
+    if (saveConfigBtn) {
+        const originalClick = saveConfigBtn.onclick;
+        
+        saveConfigBtn.onclick = function(e) {
+            // Si estamos en la pestaña de correo, guardar configuración OAuth primero
+            const correoTabActive = document.getElementById('correo') && 
+                                  document.getElementById('correo').classList.contains('active');
+            
+            if (correoTabActive && window.oauthManager) {
+                e.preventDefault();
+                
+                // Mostrar estado de carga
+                saveConfigBtn.disabled = true;
+                saveConfigBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
+                
+                // Guardar configuración OAuth
+                window.oauthManager.saveSettings()
+                    .then(result => {
+                        if (result.success) {
+                            console.log('Configuración OAuth guardada con éxito');
+                            
+                            // Mostrar mensaje de éxito
+                            const successAlert = document.getElementById('successAlert');
+                            if (successAlert) {
+                                const messageContainer = successAlert.querySelector('.alert-message');
+                                if (messageContainer) {
+                                    messageContainer.innerHTML = '<strong>¡Éxito!</strong> Configuración de correo guardada correctamente.';
+                                    successAlert.classList.add('show');
+                                    
+                                    setTimeout(() => {
+                                        successAlert.classList.remove('show');
+                                    }, 5000);
+                                }
+                            }
+                            
+                            // Ejecutar la función original de guardado si existe
+                            if (typeof originalClick === 'function') {
+                                originalClick.call(saveConfigBtn, e);
+                            } else {
+                                // Restaurar botón
+                                saveConfigBtn.disabled = false;
+                                saveConfigBtn.innerHTML = '<i class="fas fa-save"></i> Guardar Cambios';
+                            }
+                        } else {
+                            throw new Error(result.message || 'Error al guardar configuración OAuth');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error al guardar configuración OAuth:', error);
+                        
+                        // Restaurar botón
+                        saveConfigBtn.disabled = false;
+                        saveConfigBtn.innerHTML = '<i class="fas fa-save"></i> Guardar Cambios';
+                        
+                        // Mostrar error
+                        const errorAlert = document.getElementById('errorAlert');
+                        if (errorAlert) {
+                            const messageContainer = errorAlert.querySelector('.alert-message');
+                            if (messageContainer) {
+                                messageContainer.innerHTML = `<strong>Error:</strong> ${error.message || 'Error al guardar configuración OAuth'}`;
+                                errorAlert.classList.add('show');
+                                
+                                setTimeout(() => {
+                                    errorAlert.classList.remove('show');
+                                }, 5000);
+                            }
+                        }
+                    });
+            } else if (typeof originalClick === 'function') {
+                // Si no estamos en la pestaña de correo o no hay oauthManager, ejecutar la función original
+                originalClick.call(saveConfigBtn, e);
+            }
+        };
+    }
+});
