@@ -1,7 +1,7 @@
 // static/js/components/oauth_manager.js
 /**
  * oauth_manager.js - Maneja la integración OAuth 2.0 para cuentas de correo de Google
- * Parte del módulo de configuración de ZentraFlow
+ * Versión mejorada para diagnóstico de problemas de guardado
  */
 
 class OAuthManager {
@@ -50,93 +50,131 @@ class OAuthManager {
         this.init();
     }
 
+    /**
+     * Método para enviar logs al servidor (simplificado por ahora)
+     */
+    logToServer(message) {
+        console.log('[SERVER LOG]', message);
+        // Implementación de envío real omitida para simplificar
+    }
+
     init() {
         console.log('[OAuthManager] Iniciando configuración de event listeners');
         
-        // Añadir event listeners
+        // Añadir event listeners para botones de autorización
         if (this.authorizeBtn) {
-            console.log('[OAuthManager] Añadiendo event listener a authorizeBtn');
             this.authorizeBtn.addEventListener('click', this.startAuthFlow.bind(this));
         }
         
         if (this.reauthorizeBtn) {
-            console.log('[OAuthManager] Añadiendo event listener a reauthorizeBtn');
             this.reauthorizeBtn.addEventListener('click', this.startAuthFlow.bind(this));
         }
         
         if (this.revokeBtn) {
-            console.log('[OAuthManager] Añadiendo event listener a revokeBtn');
             this.revokeBtn.addEventListener('click', this.revokeAccess.bind(this));
         }
         
-        // Botón para guardar configuración OAuth
+        // PARTE CRÍTICA: Botón para guardar configuración OAuth
         if (this.saveOAuthConfigBtn) {
             console.log('[OAuthManager] Añadiendo event listener a saveOAuthConfigBtn');
+            
             this.saveOAuthConfigBtn.addEventListener('click', (e) => {
-                console.log('[OAuthManager] Botón saveOAuthConfigBtn clickeado');
+                console.log('[OAuthManager] Botón saveOAuthConfigBtn clickeado', e);
+                e.preventDefault();
                 this.saveSettingsAndShowMessage(e);
             });
+        } else {
+            console.error('[OAuthManager] No se encontró el botón saveOAuthConfigBtn');
+            
+            // Intento alternativo: querySelector en lugar de getElementById
+            const saveBtn = document.querySelector('button#saveOAuthConfigBtn');
+            if (saveBtn) {
+                console.log('[OAuthManager] Encontrado saveOAuthConfigBtn mediante querySelector');
+                this.saveOAuthConfigBtn = saveBtn;
+                
+                saveBtn.addEventListener('click', (e) => {
+                    console.log('[OAuthManager] Botón saveOAuthConfigBtn (alternativo) clickeado', e);
+                    e.preventDefault();
+                    this.saveSettingsAndShowMessage(e);
+                });
+            } else {
+                console.error('[OAuthManager] No se pudo encontrar el botón saveOAuthConfigBtn por ningún método');
+                
+                // Último recurso: encontrar cualquier botón de guardar en la pestaña de correo
+                this.setupFallbackButtons();
+            }
         }
         
-        // Detectar cambios en los inputs que requieren reautorización
-        if (this.clientIdInput) {
-            console.log('[OAuthManager] Añadiendo event listener a clientIdInput');
-            this.clientIdInput.addEventListener('change', this.onCredentialsChanged.bind(this));
-        }
-        
-        if (this.clientSecretInput) {
-            console.log('[OAuthManager] Añadiendo event listener a clientSecretInput');
-            this.clientSecretInput.addEventListener('change', this.onCredentialsChanged.bind(this));
-        }
-        
-        // Detectar cambios en configuración que no requieren reautorización
-        if (this.folderMonitorSelect) {
-            console.log('[OAuthManager] Añadiendo event listener a folderMonitorSelect');
-            this.folderMonitorSelect.addEventListener('change', this.onConfigChanged.bind(this));
-        }
-        
-        if (this.checkIntervalInput) {
-            console.log('[OAuthManager] Añadiendo event listener a checkIntervalInput');
-            this.checkIntervalInput.addEventListener('change', this.onConfigChanged.bind(this));
-        }
-        
-        if (this.markAsReadSwitch) {
-            console.log('[OAuthManager] Añadiendo event listener a markAsReadSwitch');
-            this.markAsReadSwitch.addEventListener('change', this.onConfigChanged.bind(this));
-        }
+        // Detectar cambios en campos del formulario
+        if (this.clientIdInput) this.clientIdInput.addEventListener('change', this.onCredentialsChanged.bind(this));
+        if (this.clientSecretInput) this.clientSecretInput.addEventListener('change', this.onCredentialsChanged.bind(this));
+        if (this.folderMonitorSelect) this.folderMonitorSelect.addEventListener('change', this.onConfigChanged.bind(this));
+        if (this.checkIntervalInput) this.checkIntervalInput.addEventListener('change', this.onConfigChanged.bind(this));
+        if (this.markAsReadSwitch) this.markAsReadSwitch.addEventListener('change', this.onConfigChanged.bind(this));
+        if (this.ingestaEnabledSwitch) this.ingestaEnabledSwitch.addEventListener('change', this.onConfigChanged.bind(this));
         
         // Verificar estado de autorización al cargar
         this.checkAuthStatus();
         
         // Registrar listener para mensajes de la ventana de autorización
-        console.log('[OAuthManager] Registrando event listener para mensajes de la ventana OAuth');
         window.addEventListener('message', this.handleOAuthMessage.bind(this));
         
-        // Registrar event listener en el botón principal de guardar
-        const saveConfigBtn = document.getElementById('saveConfigBtn');
-        if (saveConfigBtn) {
-            console.log('[OAuthManager] Encontrado botón principal de guardar, añadiendo event listener');
-            saveConfigBtn.addEventListener('click', (e) => {
-                console.log('[OAuthManager] Botón principal de guardar clickeado');
+        // Delegación de eventos para capturar clics en botones de guardar
+        document.addEventListener('click', (e) => {
+            // Solo procesar clics en la pestaña de correo
+            const correoTab = document.getElementById('correo');
+            if (!correoTab || !correoTab.contains(e.target)) return;
+            
+            // Verificar si es un botón de guardar
+            const button = e.target.closest('button');
+            if (button && 
+                (button.textContent.includes('Guardar') || 
+                 button.innerHTML.includes('fa-save') || 
+                 button.id === 'saveOAuthConfigBtn')) {
                 
-                // Verificar si estamos en la pestaña de correo
-                const correoTabActive = document.getElementById('correo') && 
-                                       document.getElementById('correo').classList.contains('active');
+                console.log('[OAuthManager] Botón de guardar detectado mediante delegación:', button);
                 
-                console.log('[OAuthManager] ¿Está activa la pestaña de correo?', correoTabActive);
-                
-                if (correoTabActive) {
-                    console.log('[OAuthManager] Estamos en la pestaña de correo, guardando configuración OAuth');
+                // Evitar duplicación si ya es nuestro botón principal
+                if (button !== this.saveOAuthConfigBtn) {
+                    e.preventDefault();
                     this.saveSettingsAndShowMessage(e);
-                } else {
-                    console.log('[OAuthManager] No estamos en la pestaña de correo, ignorando');
                 }
-            });
-        } else {
-            console.warn('[OAuthManager] No se encontró el botón principal de guardar');
-        }
+            }
+        });
     }
 
+    setupFallbackButtons() {
+        console.log('[OAuthManager] Configurando botones de respaldo');
+        
+        // Buscar todos los botones en la pestaña de correo
+        const correoTab = document.getElementById('correo');
+        if (!correoTab) {
+            console.error('[OAuthManager] No se encontró la pestaña de correo');
+            return;
+        }
+        
+        const buttons = correoTab.querySelectorAll('button');
+        console.log('[OAuthManager] Botones encontrados en la pestaña correo:', buttons.length);
+        
+        buttons.forEach((button, index) => {
+            console.log(`[OAuthManager] Botón ${index}:`, button.outerHTML);
+            
+            // Si parece ser un botón de guardar, añadir nuestro listener
+            if (button.textContent.includes('Guardar') || 
+                button.innerHTML.includes('fa-save') || 
+                button.classList.contains('btn-primary')) {
+                
+                console.log('[OAuthManager] Añadiendo listener de respaldo a:', button);
+                
+                button.addEventListener('click', (e) => {
+                    console.log('[OAuthManager] Botón de respaldo clickeado:', e.target);
+                    e.preventDefault();
+                    this.saveSettingsAndShowMessage(e);
+                });
+            }
+        });
+    }
+    
     checkAuthStatus() {
         console.log('[OAuthManager] Verificando estado de autorización OAuth');
         
@@ -189,7 +227,7 @@ class OAuthManager {
                         this.checkIntervalInput.value = data.check_interval;
                     }
                     
-                    if (this.markAsReadSwitch) {
+                    if (this.markAsReadSwitch && data.hasOwnProperty('mark_as_read')) {
                         console.log('[OAuthManager] Estableciendo mark_as_read:', data.mark_as_read);
                         this.markAsReadSwitch.checked = data.mark_as_read;
                     }
@@ -269,8 +307,8 @@ class OAuthManager {
             this.emailMonitorInput.disabled = this.authorized;
         }
     }
-
-    startAuthFlow(event) {  
+    
+    startAuthFlow(event) {
         console.log('[OAuthManager] Iniciando flujo de autorización OAuth');
         
         // Obtener valores actuales
@@ -494,54 +532,41 @@ class OAuthManager {
         // Recopilar datos actuales
         const formData = new FormData();
         
-        // Añadir todos los campos relevantes
+        // CRÍTICO: Añadir TODOS los campos relevantes
         if (this.clientIdInput) {
             formData.append('client_id', this.clientIdInput.value.trim());
             console.log('[OAuthManager] Guardando client_id:', this.clientIdInput.value.trim());
-        } else {
-            console.warn('[OAuthManager] No se encontró el campo client_id');
         }
         
         if (this.clientSecretInput) {
             formData.append('client_secret', this.clientSecretInput.value.trim());
             console.log('[OAuthManager] Guardando client_secret: [OCULTO]');
-        } else {
-            console.warn('[OAuthManager] No se encontró el campo client_secret');
         }
         
         if (this.emailMonitorInput) {
             formData.append('email_address', this.emailMonitorInput.value.trim());
             console.log('[OAuthManager] Guardando email_address:', this.emailMonitorInput.value.trim());
-        } else {
-            console.warn('[OAuthManager] No se encontró el campo email_address');
         }
         
+        // IMPORTANTE: Estos son los campos que podrían no estar guardándose
         if (this.folderMonitorSelect) {
             formData.append('folder_to_monitor', this.folderMonitorSelect.value);
             console.log('[OAuthManager] Guardando folder_to_monitor:', this.folderMonitorSelect.value);
-        } else {
-            console.warn('[OAuthManager] No se encontró el campo folder_to_monitor');
         }
         
         if (this.checkIntervalInput) {
             formData.append('check_interval', this.checkIntervalInput.value);
             console.log('[OAuthManager] Guardando check_interval:', this.checkIntervalInput.value);
-        } else {
-            console.warn('[OAuthManager] No se encontró el campo check_interval');
         }
         
         if (this.markAsReadSwitch) {
             formData.append('mark_as_read', this.markAsReadSwitch.checked);
             console.log('[OAuthManager] Guardando mark_as_read:', this.markAsReadSwitch.checked);
-        } else {
-            console.warn('[OAuthManager] No se encontró el campo mark_as_read');
         }
         
         if (this.ingestaEnabledSwitch) {
             formData.append('ingesta_enabled', this.ingestaEnabledSwitch.checked);
             console.log('[OAuthManager] Guardando ingesta_enabled:', this.ingestaEnabledSwitch.checked);
-        } else {
-            console.warn('[OAuthManager] No se encontró el campo ingesta_enabled');
         }
         
         // Listar todos los campos del FormData para debugging
@@ -570,7 +595,7 @@ class OAuthManager {
         console.log('[OAuthManager] URL para guardar configuración:', url);
         
         // Obtener CSRF token para POST
-        const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]');
         
         if (!csrftoken) {
             console.error('[OAuthManager] No se encontró token CSRF');
@@ -579,10 +604,11 @@ class OAuthManager {
         
         console.log('[OAuthManager] Token CSRF encontrado, enviando solicitud...');
         
+        // REALIZAR SOLICITUD FETCH
         return fetch(url, {
             method: 'POST',
             headers: {
-                'X-CSRFToken': csrftoken
+                'X-CSRFToken': csrftoken.value
             },
             body: formData
         })
@@ -618,25 +644,37 @@ class OAuthManager {
         if (this.markAsReadSwitch) {
             console.log('[OAuthManager] Valor actual de markAsReadSwitch:', this.markAsReadSwitch.checked);
         }
-        
-        // Mostrar estado de carga
-        const button = event ? event.target : this.saveOAuthConfigBtn;
-        if (!button) {
-            console.error('[OAuthManager] No se pudo determinar el botón de guardado');
-            return Promise.reject(new Error('No se pudo determinar el botón de guardado'));
+        if (this.ingestaEnabledSwitch) {
+            console.log('[OAuthManager] Valor actual de ingestaEnabledSwitch:', this.ingestaEnabledSwitch.checked);
         }
         
-        const originalText = button.innerHTML;
-        const originalClass = button.className;
+        // Mostrar estado de carga en el botón
+        const button = event && event.target ? (event.target.closest('button') || event.target) : this.saveOAuthConfigBtn;
         
-        button.disabled = true;
-        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
-        console.log('[OAuthManager] Botón de guardado deshabilitado y mostrando estado de carga');
-        
-        return this.saveSettings()
-            .then(result => {
-                console.log('[OAuthManager] Resultado de guardar configuración:', result);
-                
+        if (!button) {
+            console.warn('[OAuthManager] No se pudo determinar el botón de guardado, continuando sin actualizar UI');
+        } else {
+            console.log('[OAuthManager] Botón de guardado identificado:', button.id || 'sin-id');
+            
+            const originalText = button.innerHTML;
+            const originalClass = button.className;
+            
+            button.disabled = true;
+            button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
+            console.log('[OAuthManager] Botón de guardado deshabilitado y mostrando estado de carga');
+            
+            // Restaurar botón después de la operación
+            const restoreButton = () => {
+                button.disabled = false;
+                button.innerHTML = originalText;
+                button.className = originalClass;
+                console.log('[OAuthManager] Botón de guardado restaurado');
+            };
+            
+            this.saveSettings()
+                .then(result => {
+                    console.log('[OAuthManager] Resultado de guardar configuración:', result);
+                    
                 if (result.success) {
                     this.showMessage('success', 'Configuración de ingesta de correo guardada correctamente');
                     return result;
@@ -650,38 +688,33 @@ class OAuthManager {
                 throw error;
             })
             .finally(() => {
-                // Restaurar botón
-                button.disabled = false;
-                button.innerHTML = originalText;
-                button.className = originalClass;
-                console.log('[OAuthManager] Botón de guardado restaurado');
+                restoreButton();
             });
+        return;
     }
-
-    handleOAuthMessage(event) {
-        console.log('[OAuthManager] Mensaje recibido de ventana externa:', event.origin);
-        
-        // Verificar origen del mensaje (seguridad)
-        if (event.origin !== window.location.origin) {
-            console.warn('[OAuthManager] Mensaje rechazado por origen no seguro');
-            return;
-        }
-        
-        // Verificar que sea un mensaje de OAuth
-        const data = event.data;
-        console.log('[OAuthManager] Datos del mensaje:', data);
-        
-        if (data && data.type === 'oauth_result') {
-            if (data.success) {
-                console.log('[OAuthManager] Autorización OAuth completada con éxito');
-                this.showMessage('success', '¡Autorización completada con éxito!');
-                // Recargar estado de autorización
-                this.checkAuthStatus();
-            } else {
-                console.error('[OAuthManager] Error en la autorización OAuth:', data.message);
-                this.showMessage('error', `Error en la autorización: ${data.message}`);
-            }
-        }
+    
+    // Si no encontramos botón, igual continuamos con el guardado
+    return this.saveSettings()
+        .then(result => {
+            console.log('[OAuthManager] Resultado de guardar configuración:', result);
+            
+            if (result.success)
+                if (result.success) {
+                    this.showMessage('success', 'Configuración de ingesta de correo guardada correctamente');
+                    // Refrescar el estado para mostrar los valores actualizados
+                    setTimeout(() => {
+                        this.checkAuthStatus();
+                    }, 500);
+                    return result;
+                } else {
+                    throw new Error(result.message || 'Error al guardar configuración');
+                }
+            })
+            .catch(error => {
+                console.error('[OAuthManager] Error al guardar configuración OAuth:', error);
+                this.showMessage('error', error.message || 'Error al guardar configuración');
+                throw error;
+            });
     }
 
     showMessage(type, message) {
@@ -727,61 +760,92 @@ class OAuthManager {
             alert(`${type === 'error' ? 'Error' : (type === 'warning' ? 'Advertencia' : 'Éxito')}: ${message}`);
         }
     }
+
+    handleOAuthMessage(event) {
+        console.log('[OAuthManager] Mensaje recibido de ventana externa:', event.origin);
+        
+        // Verificar origen del mensaje (seguridad)
+        if (event.origin !== window.location.origin) {
+            console.warn('[OAuthManager] Mensaje rechazado por origen no seguro');
+            return;
+        }
+        
+        // Verificar que sea un mensaje de OAuth
+        const data = event.data;
+        console.log('[OAuthManager] Datos del mensaje:', data);
+        
+        if (data && data.type === 'oauth_result') {
+            if (data.success) {
+                console.log('[OAuthManager] Autorización OAuth completada con éxito');
+                this.showMessage('success', '¡Autorización completada con éxito!');
+                // Recargar estado de autorización
+                this.checkAuthStatus();
+            } else {
+                console.error('[OAuthManager] Error en la autorización OAuth:', data.message);
+                this.showMessage('error', `Error en la autorización: ${data.message}`);
+            }
+        }
+    }
 }
 
 // Inicializar cuando el DOM esté listo
 document.addEventListener('DOMContentLoaded', function() {
     console.log('[OAuthManager] DOM cargado, inicializando componentes');
     
-    // Inicializar OAuthManager si estamos en la página de configuración
-    if (document.getElementById('correo-tab')) {
-        console.log('[OAuthManager] Pestaña de correo encontrada, inicializando OAuthManager');
-        window.oauthManager = new OAuthManager();
+    // Verificar que estamos en la página correcta antes de inicializar
+    const correoTab = document.querySelector('#correo-tab');
+    const configTabs = document.querySelector('#configTabs');
+    
+    if (correoTab || configTabs) {
+        console.log('[OAuthManager] Página de configuración detectada, inicializando OAuthManager');
+        
+        // Esperar a que Bootstrap termine de inicializar las pestañas
+        setTimeout(() => {
+            window.oauthManager = new OAuthManager();
+            
+            // Añadir listener para el cambio de pestaña
+            if (correoTab) {
+                document.addEventListener('shown.bs.tab', function(event) {
+                    if (event.target.id === 'correo-tab') {
+                        console.log('[OAuthManager] Pestaña de correo activada');
+                        if (window.oauthManager) {
+                            window.oauthManager.checkAuthStatus();
+                        }
+                    }
+                });
+                
+                // Crear un listener específico para el botón de guardar en la pestaña de correo
+                const saveOAuthBtn = document.querySelector('#correo button#saveOAuthConfigBtn');
+                if (saveOAuthBtn) {
+                    console.log('[OAuthManager] Encontrado botón específico saveOAuthConfigBtn en pestaña correo');
+                    
+                    // Eliminar listeners previos para evitar duplicados
+                    const clonedBtn = saveOAuthBtn.cloneNode(true);
+                    saveOAuthBtn.parentNode.replaceChild(clonedBtn, saveOAuthBtn);
+                    
+                    // Añadir nuevo listener
+                    clonedBtn.addEventListener('click', function(e) {
+                        console.log('[OAuthManager] Clic en botón saveOAuthConfigBtn (específico de correo)');
+                        e.preventDefault();
+                        e.stopPropagation();
+                        if (window.oauthManager) {
+                            window.oauthManager.saveSettingsAndShowMessage(e);
+                        }
+                    });
+                }
+            }
+        }, 300);
     } else {
-        console.log('[OAuthManager] Pestaña de correo no encontrada, no se inicializará OAuthManager');
+        console.log('[OAuthManager] No se detectó la página de configuración, no se inicializará OAuthManager');
     }
     
-    // Toggle para mostrar/ocultar contraseñas
-    const togglePasswordBtns = document.querySelectorAll('.toggle-password');
-    console.log('[OAuthManager] Botones toggle-password encontrados:', togglePasswordBtns.length);
-    
-    togglePasswordBtns.forEach(btn => {
-        btn.addEventListener('click', function() {
-            console.log('[OAuthManager] Botón toggle-password clickeado');
-            const input = this.closest('.input-group').querySelector('input');
-            if (input) {
-                if (input.type === 'password') {
-                    input.type = 'text';
-                    this.innerHTML = '<i class="fas fa-eye-slash"></i>';
-                    console.log('[OAuthManager] Contraseña mostrada');
-                } else {
-                    input.type = 'password';
-                    this.innerHTML = '<i class="fas fa-eye"></i>';
-                    console.log('[OAuthManager] Contraseña ocultada');
-                }
-            } else {
-                console.warn('[OAuthManager] No se encontró el input de contraseña');
-            }
-        });
-    });
-    
-    // Buscar el botón adicional de "Guardar configuración" en la pestaña de correo
-    const saveClientInfoBtn = document.getElementById('saveClientInfoBtn');
-    const savePreferencesBtn = document.getElementById('savePreferencesBtn');
-    
-    console.log('[OAuthManager] Botones adicionales de guardar encontrados:',
-               'saveClientInfoBtn:', !!saveClientInfoBtn,
-               'savePreferencesBtn:', !!savePreferencesBtn);
-    
-    // Verificar la configuración de las pestañas
-    console.log('[OAuthManager] Estado de las pestañas:');
-    const tabs = document.querySelectorAll('.nav-link[data-bs-toggle="tab"]');
-    tabs.forEach(tab => {
-        console.log(`Tab ${tab.id}: activo=${tab.classList.contains('active')}, aria-selected=${tab.getAttribute('aria-selected')}`);
-    });
-    
-    const tabPanes = document.querySelectorAll('.tab-pane');
-    tabPanes.forEach(pane => {
-        console.log(`TabPane ${pane.id}: activo=${pane.classList.contains('active'), pane.classList.contains('show')}`);
+    // Evento global para capturar botones que no han sido detectados por OAuthManager
+    document.body.addEventListener('click', function(e) {
+        const target = e.target.closest('#saveOAuthConfigBtn');
+        if (target && window.oauthManager) {
+            console.log('[OAuthManager] Botón saveOAuthConfigBtn detectado por delegación global de eventos');
+            e.preventDefault();
+            window.oauthManager.saveSettingsAndShowMessage(e);
+        }
     });
 });
