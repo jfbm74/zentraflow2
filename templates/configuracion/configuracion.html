@@ -5,7 +5,6 @@
 
 {% block extra_css %}
     <link rel="stylesheet" href="{% static 'css/components/configuracion.css' %}">
-    
 {% endblock %}
 
 {% block content %}
@@ -234,7 +233,7 @@
             </div>
         </div>
     </div>
-
+    
     <!-- Pestaña Ingesta de Correo -->
     <div class="tab-pane fade" id="correo" role="tabpanel" aria-labelledby="correo-tab">
         <div class="config-section">
@@ -270,7 +269,6 @@
                             </div>
                             
                             <!-- Credenciales OAuth 2.0 -->
-                            <!-- Dentro del div con id="oauthCredentials" -->
                             <div id="oauthCredentials">
                                 <div class="mb-4">
                                     <label for="clientId" class="form-label">Client ID</label>
@@ -364,29 +362,6 @@
                                     <label class="form-check-label" for="markAsRead">Marcar correos como leídos</label>
                                 </div>
                                 <div class="form-text">Marcar automáticamente los correos procesados como leídos</div>
-                            </div>
-                            
-                            <div class="email-filter-rules">
-                                <label class="form-label">Reglas de Filtrado de Correo</label>
-                                <div class="filter-rule">
-                                    <div class="filter-type">De:</div>
-                                    <div class="filter-value">*@eps-salud.com</div>
-                                    <div class="filter-actions">
-                                        <button class="filter-edit"><i class="fas fa-edit"></i></button>
-                                        <button class="filter-delete"><i class="fas fa-times"></i></button>
-                                    </div>
-                                </div>
-                                <div class="filter-rule">
-                                    <div class="filter-type">Asunto:</div>
-                                    <div class="filter-value">*GLOSA*</div>
-                                    <div class="filter-actions">
-                                        <button class="filter-edit"><i class="fas fa-edit"></i></button>
-                                        <button class="filter-delete"><i class="fas fa-times"></i></button>
-                                    </div>
-                                </div>
-                                <button class="btn btn-outline-primary btn-sm mt-2 add-filter-btn">
-                                    <i class="fas fa-plus"></i> Agregar Regla
-                                </button>
                             </div>
                         </div>
                     </div>
@@ -609,38 +584,6 @@
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Modal para editar regla de filtro -->
-<div class="modal fade" id="filterRuleModal" tabindex="-1" aria-labelledby="filterRuleModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="filterRuleModalLabel">Editar Regla de Filtro</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <div class="mb-3">
-                    <label for="filterType" class="form-label">Tipo de Filtro</label>
-                    <select class="form-select" id="filterType">
-                        <option value="from">De (Remitente)</option>
-                        <option value="subject">Asunto</option>
-                        <option value="body">Contenido</option>
-                        <option value="has-attachment">Tiene Adjunto</option>
-                    </select>
-                </div>
-                <div class="mb-3">
-                    <label for="filterValue" class="form-label">Valor</label>
-                    <input type="text" class="form-control" id="filterValue" placeholder="Ej: *@empresa.com, *GLOSA*">
-                    <div class="form-text">Usa * como comodín para coincidencias parciales</div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-primary" id="saveFilterBtn">Guardar</button>
             </div>
         </div>
     </div>

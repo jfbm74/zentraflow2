@@ -56,6 +56,8 @@ class TenantConfig(models.Model):
 
 # apps/configuracion/models.py (añadir al archivo existente)
 
+# apps/configuracion/models.py (fragmento de código para actualizar)
+
 class EmailOAuthCredentials(models.Model):
     """Modelo para almacenar credenciales OAuth 2.0 de cuentas de correo por tenant."""
     tenant = models.OneToOneField('tenants.Tenant', on_delete=models.CASCADE, related_name='oauth_credentials')
@@ -71,6 +73,7 @@ class EmailOAuthCredentials(models.Model):
     folder_to_monitor = models.CharField(max_length=100, default="INBOX", verbose_name="Carpeta a Monitorear")
     check_interval = models.IntegerField(default=5, verbose_name="Intervalo de Verificación (minutos)")
     mark_as_read = models.BooleanField(default=True, verbose_name="Marcar como Leído")
+    ingesta_enabled = models.BooleanField(default=True, verbose_name="Habilitar Ingesta")
 
     class Meta:
         app_label = 'configuracion'

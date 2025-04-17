@@ -89,7 +89,8 @@ class OAuthStatusView(View):
             'last_authorized': credentials.last_authorized.isoformat() if credentials.last_authorized else None,
             'folder_to_monitor': credentials.folder_to_monitor,
             'check_interval': credentials.check_interval,
-            'mark_as_read': credentials.mark_as_read
+            'mark_as_read': credentials.mark_as_read,
+            'ingesta_enabled': getattr(credentials, 'ingesta_enabled', True)
         })
 
 class OAuthRevokeView(View):
@@ -142,6 +143,9 @@ class OAuthSettingsView(View):
             # Obtener datos
             data = request.POST.dict()
             
+            # Debug: Imprimir datos recibidos
+            print(f"OAuthSettingsView datos recibidos: {data}")
+            
             # Actualizar credenciales OAuth
             if 'client_id' in data:
                 credentials.client_id = data['client_id']
@@ -155,6 +159,8 @@ class OAuthSettingsView(View):
                 credentials.check_interval = int(data['check_interval'])
             if 'mark_as_read' in data:
                 credentials.mark_as_read = data['mark_as_read'].lower() == 'true'
+            if 'ingesta_enabled' in data:
+                credentials.ingesta_enabled = data['ingesta_enabled'].lower() == 'true'
             
             # Si cambiamos client_id o client_secret, revocar autorización actual
             if 'client_id' in data or 'client_secret' in data:
@@ -171,6 +177,7 @@ class OAuthSettingsView(View):
             })
             
         except Exception as e:
+            print(f"Error al actualizar configuración OAuth: {str(e)}")
             return JsonResponse({
                 'success': False,
                 'message': f'Error al actualizar la configuración OAuth: {str(e)}'
