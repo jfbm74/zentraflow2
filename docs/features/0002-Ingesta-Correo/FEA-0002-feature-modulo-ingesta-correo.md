@@ -18,7 +18,9 @@ Dotar a ZentraFlow de un módulo autónomo que conecte cuentas de correo, apliqu
 
 ### 3. Valor de negocio / beneficios
 
-BeneficioImpactoAutomatización de clasificación de glosasReduce ≈ 90 % el tiempo operativo del personal de facturación.Visibilidad en tiempo realMejora la detección de fallos y la toma de decisiones.Escalabilidad multi‑tenantAcelera la incorporación de nuevas clínicas sin código adicional.
+Beneficio                                           Impacto 
+Automatización de clasificación de glosas           Reduce ≈ 90 % el tiempo operativo del personal de facturación.Visibilidad en tiempo real                          Mejora la detección de fallos y la toma de decisiones.
+Escalabilidad multi‑tenant                          Acelera la incorporación de nuevas clínicas sin código adicional.
 
 ### 4. Alcance (Scope)
 
@@ -59,7 +61,7 @@ BeneficioImpactoAutomatización de clasificación de glosasReduce ≈ 90 % el
 
 ### 7. Historias de usuario clave
 
-IDComo (un)QuieroParaUS‑001Operadorver el estado de la ingesta de mi clínicasaber si los correos están siendo procesados correctamenteUS‑002Operadorcrear y probar una nueva regla de filtradoautomatizar las glosas de un nuevo aseguradorUS‑003Administradorpausar o reanudar el serviciorealizar mantenimientos sin perder correosUS‑004Analistabuscar eventos por remitente y rango de fechasinvestigar incidentes rápidamenteUS‑005SRErecibir alertas cuando la tasa de errores supere 5 %reaccionar antes de que afecte al cliente
+Como (un) usuario final, quiero: ver el estado de la ingesta de mi cuenta de correo de clínica saber si los correos están siendo procesados correctamente y si los correos están siendo procesados correctamente, para poder saber cuándo se procesan y cuánto tiempo tarda en hacerlo.Tambien quiero  crear y probar una nueva regla de filtrado y automatizar las glosas de un nuevo aseguradorUS‑003Administradorpausar o reanudar el serviciorealizar mantenimientos sin perder correos. asi mismo buscar eventos por remitente y rango de fechasinvestigar incidentes rápidamente para encontrar incidentes rápidamente y recibir alertas cuando la tasa de errores supere 5 % y reaccionar antes de que afecte al cliente
 
 ### 8. Flujo de usuario (Happy Path)
 
@@ -88,27 +90,30 @@ IDComo (un)QuieroParaUS‑001Operadorver el estado de la ingesta de mi clínica
     
 *   Colores semafóricos: verde (Activo), amarillo (Pausado), rojo (Error).
     
-*   “Wizard” inicial de onboarding (añadir cuenta → definir primera regla → probar).
     
 
 ### 10. Requisitos funcionales (RF)
 
-IDRequisitoPrioridadRF‑01El sistema debe conectar múltiples cuentas de correo por tenant.AltaRF‑02Debe existir un cron/worker que recupere correos cada _n_ minutos.AltaRF‑03Las reglas deben evaluarse en orden de prioridad y soportar operadores _contiene_, _igual_, _regex_.AltaRF‑04El usuario debe filtrar logs por fecha, remitente, estado y texto libre.MediaRF‑05Debe existir exportación CSV que respete los filtros activos.MediaRF‑06Los registros se deben archivar/compactar después de 90 días.Media
+ID          Requisito                                                                               Prioridad   
+RF‑01       El sistema debe conectar múltiples cuentas de correo por tenant.                        Alta
+RF‑02       Debe existir un cron/worker que recupere correos cada _n_ minutos.                      Alta
+RF‑03       Las reglas deben evaluarse en orden de prioridad y soportar operadores _contiene_, _igual_, _regex_.Alta
+RF‑04       El usuario debe filtrar logs por fecha, remitente, estado y texto libre.                Media
+RF‑05       Debe existir exportación CSV que respete los filtros activos.                           Media
+RF‑06       Los registros se deben archivar/compactar después de 90 días.                           Media
 
 ### 11. Requisitos no funcionales (RNF)
 
-IDDescripciónMétricaRNF‑01Latencia de respuesta de API de logs≤ 200 ms (P95)RNF‑02Disponibilidad del servicio de ingesta≥ 99,5 % mensualRNF‑03Cobertura de pruebas≥ 90 % líneas en servicios críticosRNF‑04Cumplir HIPAA/ISO 27001 para datos sensiblesSí
+ID          Descripción                                             Métrica
+RNF‑01      Latencia de respuesta de API de logs                    ≤ 200 ms (P95)
+RNF‑02      Disponibilidad del servicio de ingesta                  ≥ 99,5 % mensual
+RNF‑03      Cobertura de pruebas                                    ≥ 90 % líneas en servicios críticos
+
 
 ### 12. Aceptación / Definición de “Done”
 
-*   Todas las historias US‑001 → US‑005 tienen pruebas end‑to‑end en CI.
-    
-*   El dashboard muestra datos en vivo en staging.
-    
-*   Auditoría de seguridad (OWASP ASVS nivel 2) aprobada.
-    
-*   Documentación actualizada (README + Swagger + Wiki de instalación).
-    
+*   Todas las historias tienen pruebas end‑to‑end en CI.
+        
 
 ### 13. Métricas y KPIs
 

@@ -50,8 +50,8 @@ INSTALLED_APPS = [
     'apps.tenants.apps.TenantsConfig',
     'apps.authentication.apps.AuthenticationConfig',
     'apps.core.apps.CoreConfig',
-    #'apps.dashboard.apps.DashboardConfig',
     'apps.configuracion.apps.ConfiguracionConfig',
+    'apps.ingesta_correo.apps.IngestaCorreoConfig',
 ]
 
 
