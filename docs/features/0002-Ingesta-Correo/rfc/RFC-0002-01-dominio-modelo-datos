@@ -1,0 +1,14 @@
+RFC‑001 – Dominio y modelo de datos
+-----------------------------------
+
+**ID**: RFC‑001
+**Estado**: Draft
+**Autor**: Juan Bustamante**
+Objetivo**: Definir entidades persistentes para el módulo y sus relaciones.
+
+**Problema**No existe un modelo normalizado para almacenar configuración, reglas y logs de ingesta multi‑tenant.
+**Alcance**Diseñar modelos _EmailAccount, FilterRule, EmailLog, Attachment_ usando Django ORM con multi‑tenant (ForeignKey a _tenants.Tenant_).
+**Diseño****EmailAccount** (id, tenant, email, protocol, oauth\_token, check\_interval, active).**FilterRule** (id, tenant, name, field, operator, value, action, priority, active, created\_at).**EmailLog** (id, tenant, account, rule, subject, sender, status, processed\_at, attachments\_count, meta (JSONField)).**Attachment** (id, log, filename, size, extracted\_at, storage\_path).
+**SOLID**SRP – cada modelo encapsula una sola responsabilidad.OCP – nuevos operadores o campos de regla se añaden vía Enum/Strategy sin tocar reglas existentes.
+**Archivos**apps/ingesta\_correo/models.py + migrations.
+**Criterios de aceptación**Migraciones aplican sin error; relaciones con Tenant funcionan; constraints por cuenta única × tenant.
