@@ -91,3 +91,5 @@ class EmailOAuthCredentials(models.Model):
         # Consideramos el token como válido si falta más de 5 minutos para que expire
         from django.utils import timezone
         return self.token_expiry > timezone.now() + timezone.timedelta(minutes=5)
+
+
