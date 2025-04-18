@@ -119,25 +119,26 @@ Configuración
 Estructura del proyecto
 -----------------------
 
+```
 zentraflow/
 ├── apps/
 │   ├── authentication/   # Gestión de usuarios y autenticación
-│   ├── configuracion/    # Configuración del sistema y OAuth
-│   ├── core/             # Componentes compartidos
-│   ├── ingesta_correo/   # Ingesta y procesamiento de correos
-│   └── tenants/          # Gestión de clientes multi-tenant
+│   ├── configuracion/   # Configuración del sistema y OAuth
+│   ├── core/            # Componentes compartidos
+│   ├── ingesta_correo/  # Ingesta y procesamiento de correos
+│   └── tenants/         # Gestión de clientes multi-tenant
 ├── static/
-│   ├── css/              # Estilos CSS
-│   ├── js/               # Scripts JavaScript
-│   └── images/           # Imágenes y recursos gráficos
-├── templates/            # Plantillas HTML
-├── zentraflow/           # Configuración del proyecto Django
-│   ├── celery.py         # Configuración de Celery
-│   ├── settings.py       # Configuración de Django
-│   └── urls.py           # Definición de rutas
+│   ├── css/            # Estilos CSS
+│   ├── js/             # Scripts JavaScript
+│   └── images/         # Imágenes y recursos gráficos
+├── templates/          # Plantillas HTML
+├── zentraflow/         # Configuración del proyecto Django
+│   ├── celery.py      # Configuración de Celery
+│   ├── settings.py     # Configuración de Django
+│   └── urls.py        # Definición de rutas
 ├── manage.py
 └── README.md
-
+```
 
 Tareas programadas
 ------------------
