@@ -3,9 +3,13 @@ from django.views.generic import TemplateView, View
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import JsonResponse
 from django.utils import timezone
-
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_protect
 from .models import ServicioIngesta, ReglaFiltrado, CorreoIngesta, ArchivoAdjunto, LogActividad
 from .services.dashboard_service import DashboardService
+from apps.configuracion.services.oauth_verification_service import OAuthVerificationService
+
+
 
 class DashboardIngestaView(LoginRequiredMixin, TemplateView):
     """Vista principal del dashboard de ingesta de correo."""
@@ -62,25 +66,27 @@ class ToggleServicioView(LoginRequiredMixin, View):
         tenant = request.user.tenant
         
         try:
+            # Verificar estado de OAuth antes de activar el servicio
+            from apps.configuracion.models import EmailOAuthCredentials
+            try:
+                credentials = EmailOAuthCredentials.objects.get(tenant=tenant)
+                oauth_valid = credentials.authorized and credentials.is_token_valid()
+            except EmailOAuthCredentials.DoesNotExist:
+                oauth_valid = False
+            
             servicio, created = ServicioIngesta.objects.get_or_create(tenant=tenant)
-            servicio.activo = not servicio.activo
+            
+            # Si están intentando activar el servicio pero OAuth no es válido, no permitirlo
+            new_state = not servicio.activo
+            if new_state and not oauth_valid:
+                return JsonResponse({
+                    'success': False,
+                    'message': "No se puede activar el servicio sin una configuración OAuth válida."
+                })
+            
+            servicio.activo = new_state
             servicio.modificado_por = request.user
             servicio.save()
-            
-            # Registrar la acción en el log de actividad
-            evento = 'SERVICIO_INICIADO' if servicio.activo else 'SERVICIO_DETENIDO'
-            LogActividad.objects.create(
-                tenant=tenant,
-                evento=evento,
-                detalles=f"Servicio de ingesta {evento.lower()} por {request.user.email}",
-                usuario=request.user
-            )
-            
-            return JsonResponse({
-                'success': True,
-                'active': servicio.activo,
-                'message': f"Servicio {'activado' if servicio.activo else 'desactivado'} correctamente."
-            })
         except Exception as e:
             return JsonResponse({
                 'success': False,
@@ -150,3 +156,29 @@ class CorreosListView(LoginRequiredMixin, TemplateView):
         }
         
         return context
+    
+class VerifyConnectionView(LoginRequiredMixin, View):
+    """Vista para verificar la conexión OAuth con Gmail."""
+    
+    @method_decorator(csrf_protect)
+    def post(self, request):
+        """Maneja solicitudes POST para verificar la conexión."""
+        tenant = request.user.tenant
+        
+        try:
+            # Llamar al servicio de verificación
+            result = OAuthVerificationService.verify_connection(tenant)
+            return JsonResponse(result)
+            
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'message': f'Error al verificar la conexión: {str(e)}',
+                'status': {
+                    'oauth_authorized': False,
+                    'oauth_token_valid': False,
+                    'folder_accessible': False,
+                    'read_permissions': False,
+                    'email_address': None
+                }
+            }, status=500)

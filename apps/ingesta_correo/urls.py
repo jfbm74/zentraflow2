@@ -1,6 +1,6 @@
 
 from django.urls import path
-from .views import DashboardIngestaView, ApiDashboardIngestaView, ToggleServicioView, CorreosListView
+from .views import DashboardIngestaView, ApiDashboardIngestaView, ToggleServicioView, CorreosListView, VerifyConnectionView
 
 urlpatterns = [
     # Vistas web
@@ -10,4 +10,5 @@ urlpatterns = [
     # API endpoints
     path('api/dashboard/', ApiDashboardIngestaView.as_view(), name='api_ingesta_dashboard'),
     path('api/toggle-servicio/', ToggleServicioView.as_view(), name='api_toggle_servicio'),
+    path('api/verify-connection/', VerifyConnectionView.as_view(), name='api_verify_connection'),
 ]
