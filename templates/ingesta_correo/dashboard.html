@@ -83,6 +83,153 @@
         from { transform: rotate(0deg); }
         to { transform: rotate(360deg); }
     }
+
+    .stats-cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+        width: 100%;
+    }
+
+    .stat-card {
+        background: white;
+        border-radius: 0.75rem;
+        padding: 1rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        transition: all 0.2s ease;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .stat-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+    }
+
+    .stat-card.processed-emails::before { background: var(--primary-gradient); }
+    .stat-card.extracted-claims::before { background: var(--secondary-gradient); }
+    .stat-card.pending::before { background: var(--success-gradient); }
+    .stat-card.errors::before { background: var(--danger-gradient); }
+
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+
+    .stat-card-content {
+        display: flex;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+
+    .stat-card-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 2.5rem;
+        height: 2.5rem;
+        border-radius: 0.5rem;
+        font-size: 1.25rem;
+        transition: all 0.2s ease;
+    }
+
+    .stat-card.processed-emails .stat-card-icon {
+        background: rgba(99, 102, 241, 0.1);
+        color: #6366f1;
+    }
+
+    .stat-card.extracted-claims .stat-card-icon {
+        background: rgba(245, 158, 11, 0.1);
+        color: #f59e0b;
+    }
+
+    .stat-card.pending .stat-card-icon {
+        background: rgba(16, 185, 129, 0.1);
+        color: #10b981;
+    }
+
+    .stat-card.errors .stat-card-icon {
+        background: rgba(239, 68, 68, 0.1);
+        color: #ef4444;
+    }
+
+    .stat-card:hover .stat-card-icon {
+        transform: scale(1.1);
+    }
+
+    .stat-card-info {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .stat-card-title {
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 0.25rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .stat-card-value {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: #1e293b;
+        line-height: 1.2;
+        margin-bottom: 0.5rem;
+    }
+
+    .stat-card-footer {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    .stat-card-trend {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+        font-size: 0.875rem;
+        font-weight: 500;
+    }
+
+    .stat-card-trend .text-success {
+        color: #10b981;
+    }
+
+    .stat-card-trend .text-danger {
+        color: #ef4444;
+    }
+
+    .stat-card-trend .text-secondary {
+        color: #64748b;
+    }
+
+    .stat-card-footer-text {
+        font-size: 0.75rem;
+        color: #64748b;
+    }
+
+    /* Ajustes responsivos adicionales */
+    @media (max-width: 640px) {
+        .stats-cards {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    @media (max-width: 480px) {
+        .stats-cards {
+            grid-template-columns: 1fr;
+        }
+    }
 </style>
 {% endblock %}
 
@@ -277,43 +424,75 @@
 <!-- Stats Cards -->
 <div class="stats-cards">
     <div class="stat-card processed-emails">
-        <div class="stat-card-icon">
-            <i class="fas fa-envelope-open"></i>
-        </div>
-        <div class="stat-card-title">CORREOS PROCESADOS</div>
-        <div class="stat-card-value" id="correos-procesados">{{ metrics_24h.correos_procesados }}</div>
-        <div class="stat-card-footer">
-            <div class="stat-card-footer-text">Últimas 24 horas</div>
+        <div class="stat-card-content">
+            <div class="stat-card-icon">
+                <i class="fas fa-envelope-open"></i>
+            </div>
+            <div class="stat-card-info">
+                <div class="stat-card-title">CORREOS PROCESADOS</div>
+                <div class="stat-card-value" id="correos-procesados">{{ metrics_24h.correos_procesados }}</div>
+                <div class="stat-card-footer">
+                    <div class="stat-card-trend">
+                        <i class="fas fa-arrow-up text-success"></i>
+                        <span class="text-success">+5%</span>
+                    </div>
+                    <div class="stat-card-footer-text">Últimas 24 horas</div>
+                </div>
+            </div>
         </div>
     </div>
     <div class="stat-card extracted-claims">
-        <div class="stat-card-icon">
-            <i class="fas fa-file-alt"></i>
-        </div>
-        <div class="stat-card-title">GLOSAS EXTRAÍDAS</div>
-        <div class="stat-card-value" id="glosas-extraidas">{{ metrics_24h.glosas_extraidas }}</div>
-        <div class="stat-card-footer">
-            <div class="stat-card-footer-text">Últimas 24 horas</div>
+        <div class="stat-card-content">
+            <div class="stat-card-icon">
+                <i class="fas fa-file-alt"></i>
+            </div>
+            <div class="stat-card-info">
+                <div class="stat-card-title">GLOSAS EXTRAÍDAS</div>
+                <div class="stat-card-value" id="glosas-extraidas">{{ metrics_24h.glosas_extraidas }}</div>
+                <div class="stat-card-footer">
+                    <div class="stat-card-trend">
+                        <i class="fas fa-arrow-up text-success"></i>
+                        <span class="text-success">+12%</span>
+                    </div>
+                    <div class="stat-card-footer-text">Últimas 24 horas</div>
+                </div>
+            </div>
         </div>
     </div>
     <div class="stat-card pending">
-        <div class="stat-card-icon">
-            <i class="fas fa-hourglass-half"></i>
-        </div>
-        <div class="stat-card-title">PENDIENTES</div>
-        <div class="stat-card-value" id="pendientes">{{ metrics_24h.pendientes }}</div>
-        <div class="stat-card-footer">
-            <div class="stat-card-footer-text">Correos en proceso</div>
+        <div class="stat-card-content">
+            <div class="stat-card-icon">
+                <i class="fas fa-hourglass-half"></i>
+            </div>
+            <div class="stat-card-info">
+                <div class="stat-card-title">PENDIENTES</div>
+                <div class="stat-card-value" id="pendientes">{{ metrics_24h.pendientes }}</div>
+                <div class="stat-card-footer">
+                    <div class="stat-card-trend">
+                        <i class="fas fa-arrow-down text-success"></i>
+                        <span class="text-success">-3%</span>
+                    </div>
+                    <div class="stat-card-footer-text">Correos en proceso</div>
+                </div>
+            </div>
         </div>
     </div>
     <div class="stat-card errors">
-        <div class="stat-card-icon">
-            <i class="fas fa-exclamation-triangle"></i>
-        </div>
-        <div class="stat-card-title">ERRORES</div>
-        <div class="stat-card-value" id="errores">{{ metrics_24h.errores }}</div>
-        <div class="stat-card-footer">
-            <div class="stat-card-footer-text">Últimas 24 horas</div>
+        <div class="stat-card-content">
+            <div class="stat-card-icon">
+                <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <div class="stat-card-info">
+                <div class="stat-card-title">ERRORES</div>
+                <div class="stat-card-value" id="errores">{{ metrics_24h.errores }}</div>
+                <div class="stat-card-footer">
+                    <div class="stat-card-trend">
+                        <i class="fas fa-equals text-secondary"></i>
+                        <span class="text-secondary">Sin cambios</span>
+                    </div>
+                    <div class="stat-card-footer-text">Últimas 24 horas</div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
