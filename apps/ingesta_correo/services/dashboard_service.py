@@ -1,6 +1,8 @@
 from django.utils import timezone
 from django.db.models import Count, Sum
 from datetime import timedelta
+
+from apps.configuracion.models import EmailOAuthCredentials
 from ..models import CorreoIngesta, EstadisticaDiaria, LogActividad, ServicioIngesta
 
 class DashboardService:
@@ -105,3 +107,42 @@ class DashboardService:
         ).order_by('-fecha_hora')[:limit]
         
         return logs
+    
+    @staticmethod
+    def get_system_status(tenant):
+        """Obtiene el estado actual del sistema de ingesta."""
+        # Verificar si el servicio está activo
+        try:
+            servicio, created = ServicioIngesta.objects.get_or_create(tenant=tenant)
+            servicio_activo = servicio.activo
+            ultima_verificacion = servicio.ultima_verificacion
+        except ServicioIngesta.DoesNotExist:
+            servicio_activo = False
+            ultima_verificacion = None
+        
+        # Verificar configuración de OAuth
+        try:
+            credentials = EmailOAuthCredentials.objects.get(tenant=tenant)
+            oauth_configured = credentials.client_id and credentials.client_secret
+            oauth_authorized = credentials.authorized
+            oauth_token_valid = credentials.is_token_valid()
+            email_address = credentials.email_address
+            
+            # Si OAuth no está autorizado, el servicio no debería estar activo
+            if servicio_activo and (not oauth_authorized or not oauth_token_valid):
+                servicio.activo = False
+                servicio.save()
+                servicio_activo = False
+                
+                # Registrar en log
+                LogActividad.objects.create(
+                    tenant=tenant,
+                    evento='SERVICIO_DETENIDO',
+                    detalles="Servicio de ingesta detenido automáticamente por estado inválido de credenciales OAuth",
+                )
+        except EmailOAuthCredentials.DoesNotExist:
+            oauth_configured = False
+            oauth_authorized = False
+            oauth_token_valid = False
+            email_address = None
+    

@@ -1,208 +1,359 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Dashboard de Ingesta de Correo{% endblock %}
+{% block title %}ZentraFlow - Ingesta de Correo{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/components/dashboard.css' %}">
 <link rel="stylesheet" href="{% static 'css/ingesta_correo/dashboard.css' %}">
 {% endblock %}
 
 {% block content %}
+<!-- CSRF token para formularios POST -->
 {% csrf_token %}
-<!-- Dashboard de Ingesta de Correo -->
-<div class="container-fluid">
-    <div class="page-title">
-        <h1>Dashboard de Ingesta de Correo</h1>
-        <div class="d-flex">
-            <button class="btn-week me-2">
-                <i class="fas fa-calendar-week"></i> Últimos 7 días
+
+<div class="page-title">
+    <h1>Ingesta de Correo - {{ request.user.tenant.name }}</h1>
+    <div class="d-flex align-items-center gap-3">
+        <button class="btn-action" id="toggleServicio" {% if not system_status.oauth_authorized or not system_status.oauth_token_valid %}disabled{% endif %}>
+            {% if system_status.servicio_activo %}
+            <i class="fas fa-stop-circle"></i> Detener Servicio
+            {% else %}
+            <i class="fas fa-play-circle"></i> Iniciar Servicio
+            {% endif %}
+        </button>
+        <button class="btn-secondary-action" id="verifyConnection">
+            <i class="fas fa-sync-alt"></i> Verificar Conexión
+        </button>
+    </div>
+</div>
+
+<!-- Alerta de estado (oculta por defecto) -->
+<div class="alert alert-info alert-dismissible fade show mb-4" role="alert" id="statusAlert" style="display: none;">
+    <div class="alert-icon">
+        <i class="fas fa-info-circle"></i>
+    </div>
+    <div class="alert-message">
+        <span id="statusMessage">Estado del servicio</span>
+    </div>
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+
+<!-- Estado del Sistema Card -->
+<div class="config-card mb-4">
+    <div class="config-card-header">
+        <h3><i class="fas fa-heartbeat"></i> Estado del Servicio</h3>
+        <button class="btn btn-outline-primary btn-sm" id="refreshChart">
+            <i class="fas fa-sync-alt"></i> Actualizar
+        </button>
+    </div>
+    <div class="config-card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="status-item">
+                    <span class="status-label">Estado General:</span>
+                    <span class="status-value">
+                        {% if system_status.servicio_activo and system_status.oauth_authorized and system_status.oauth_token_valid %}
+                            <span class="badge bg-success"><i class="fas fa-check-circle"></i> En funcionamiento</span>
+                        {% elif system_status.servicio_activo and not system_status.oauth_authorized %}
+                            <span class="badge bg-warning"><i class="fas fa-exclamation-triangle"></i> Inconsistente - OAuth no autorizado</span>
+                        {% elif system_status.servicio_activo and not system_status.oauth_token_valid %}
+                            <span class="badge bg-warning"><i class="fas fa-exclamation-triangle"></i> Inconsistente - Token expirado</span>
+                        {% elif system_status.estado_general == 'error' %}
+                            <span class="badge bg-danger"><i class="fas fa-times-circle"></i> Con errores</span>
+                        {% else %}
+                            <span class="badge bg-secondary"><i class="fas fa-pause-circle"></i> Inactivo</span>
+                        {% endif %}
+                    </span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Servicio:</span>
+                    <span id="service-status" class="status-value">
+                        {% if system_status.servicio_activo %}
+                            <span class="text-success"><i class="fas fa-circle"></i> Activo</span>
+                        {% else %}
+                            <span class="text-secondary"><i class="fas fa-circle"></i> Inactivo</span>
+                        {% endif %}
+                    </span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">OAuth:</span>
+                    <span id="oauth-status" class="status-value">
+                        {% if system_status.oauth_authorized and system_status.oauth_token_valid %}
+                            <span class="text-success"><i class="fas fa-circle"></i> Autorizado</span>
+                        {% elif system_status.oauth_authorized and not system_status.oauth_token_valid %}
+                            <span class="text-warning"><i class="fas fa-exclamation-circle"></i> Token expirado</span>
+                        {% else %}
+                            <span class="text-danger"><i class="fas fa-circle"></i> No autorizado</span>
+                        {% endif %}
+                    </span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Cuenta asociada:</span>
+                    <span id="email-account" class="status-value">
+                        {% if system_status.email_address %}
+                            <span title="{{ system_status.email_address }}">{{ system_status.email_address }}</span>
+                        {% else %}
+                            <span class="text-muted">No configurada</span>
+                            <a href="{% url 'configuracion' %}#correo" class="ms-2 badge bg-primary">
+                                <i class="fas fa-cog"></i> Configurar
+                            </a>
+                        {% endif %}
+                    </span>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="status-item">
+                    <span class="status-label">Última verificación:</span>
+                    <span id="last-check" class="status-value">
+                        {% if system_status.ultima_verificacion %}
+                            <span title="{{ system_status.ultima_verificacion|date:'d/m/Y H:i:s' }}">
+                                {{ system_status.ultima_verificacion|date:"d/m/Y H:i:s" }}
+                            </span>
+                        {% else %}
+                            <span class="text-muted">Nunca</span>
+                        {% endif %}
+                    </span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Último correo procesado:</span>
+                    <span id="last-processed" class="status-value">
+                        {% if system_status.ultimo_correo_procesado %}
+                            <span title="{{ system_status.ultimo_correo_procesado|date:'d/m/Y H:i:s' }}">
+                                {{ system_status.ultimo_correo_procesado|date:"d/m/Y H:i:s" }}
+                            </span>
+                        {% else %}
+                            <span class="text-muted">Nunca</span>
+                        {% endif %}
+                    </span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Errores recientes:</span>
+                    <span id="recent-errors" class="status-value">
+                        {% if system_status.errores_recientes > 0 %}
+                            <span class="text-danger">{{ system_status.errores_recientes }}</span>
+                            <a href="{% url 'ingesta_correo_correos' %}?estado=ERROR" class="ms-2 badge bg-danger">
+                                <i class="fas fa-search"></i> Ver errores
+                            </a>
+                        {% else %}
+                            <span class="text-success">0</span>
+                        {% endif %}
+                    </span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Reintentos:</span>
+                    <span id="retry-count" class="status-value">{{ system_status.reintentos|default:"0" }}</span>
+                </div>
+            </div>
+        </div>
+        
+        {% if not system_status.oauth_authorized or not system_status.oauth_token_valid %}
+        <div class="alert alert-warning mt-3 mb-0">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            <strong>Atención:</strong> 
+            {% if not system_status.oauth_authorized %}
+                No se ha autorizado la conexión OAuth. 
+            {% elif not system_status.oauth_token_valid %}
+                El token de autorización ha expirado.
+            {% endif %}
+            <a href="{% url 'configuracion' %}#correo" class="alert-link">Configure la conexión</a> para habilitar el servicio.
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Stats Cards -->
+<div class="stats-cards">
+    <div class="stat-card processed-emails">
+        <div class="stat-card-icon">
+            <i class="fas fa-envelope-open"></i>
+        </div>
+        <div class="stat-card-title">CORREOS PROCESADOS</div>
+        <div class="stat-card-value" id="correos-procesados">{{ metrics_24h.correos_procesados }}</div>
+        <div class="stat-card-footer">
+            <div class="stat-card-footer-text">Últimas 24 horas</div>
+        </div>
+    </div>
+    <div class="stat-card extracted-claims">
+        <div class="stat-card-icon">
+            <i class="fas fa-file-alt"></i>
+        </div>
+        <div class="stat-card-title">GLOSAS EXTRAÍDAS</div>
+        <div class="stat-card-value" id="glosas-extraidas">{{ metrics_24h.glosas_extraidas }}</div>
+        <div class="stat-card-footer">
+            <div class="stat-card-footer-text">Últimas 24 horas</div>
+        </div>
+    </div>
+    <div class="stat-card pending">
+        <div class="stat-card-icon">
+            <i class="fas fa-hourglass-half"></i>
+        </div>
+        <div class="stat-card-title">PENDIENTES</div>
+        <div class="stat-card-value" id="pendientes">{{ metrics_24h.pendientes }}</div>
+        <div class="stat-card-footer">
+            <div class="stat-card-footer-text">Correos en proceso</div>
+        </div>
+    </div>
+    <div class="stat-card errors">
+        <div class="stat-card-icon">
+            <i class="fas fa-exclamation-triangle"></i>
+        </div>
+        <div class="stat-card-title">ERRORES</div>
+        <div class="stat-card-value" id="errores">{{ metrics_24h.errores }}</div>
+        <div class="stat-card-footer">
+            <div class="stat-card-footer-text">Últimas 24 horas</div>
+        </div>
+    </div>
+</div>
+
+<!-- Activity Section -->
+<div class="activity-section">
+    <!-- Trends Chart -->
+    <div class="dashboard-card">
+        <div class="dashboard-card-header">
+            <div class="dashboard-card-title">Tendencias de Actividad</div>
+            <div class="d-flex align-items-center gap-2">
+                <select class="form-select form-select-sm" id="chartPeriod">
+                    <option value="7" selected>Últimos 7 días</option>
+                    <option value="14">Últimos 14 días</option>
+                    <option value="30">Últimos 30 días</option>
+                </select>
+                <button class="btn btn-outline-primary btn-sm" id="refreshTrends">
+                    <i class="fas fa-sync-alt"></i> Actualizar
+                </button>
+            </div>
+        </div>
+        <div class="dashboard-card-body">
+            <canvas id="trendsChart" height="280" data-trends="{{ daily_trends_json }}"></canvas>
+        </div>
+    </div>
+
+    <!-- Recent Activity -->
+    <div class="dashboard-card">
+        <div class="dashboard-card-header">
+            <div class="dashboard-card-title">Actividad Reciente</div>
+            <button class="btn btn-outline-primary btn-sm" id="refreshActivity">
+                <i class="fas fa-sync-alt"></i> Actualizar
             </button>
-            <button class="btn-export">
-                <i class="fas fa-file-export"></i> Exportar
-            </button>
         </div>
-    </div>
-
-    <!-- Estado del Sistema -->
-    <div class="system-status mb-4">
-        <div class="card">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <h5 class="card-title">Estado del Sistema</h5>
-                        <p class="mb-0">
-                            {% if system_status.servicio_activo %}
-                                <span class="badge bg-success">Servicio Activo</span>
-                            {% else %}
-                                <span class="badge bg-danger">Servicio Inactivo</span>
-                            {% endif %}
-                            
-                            {% if system_status.estado_general == 'success' %}
-                                <span class="badge bg-success ms-2">Funcionando correctamente</span>
-                            {% elif system_status.estado_general == 'warning' %}
-                                <span class="badge bg-warning ms-2">Con alertas</span>
-                            {% elif system_status.estado_general == 'error' %}
-                                <span class="badge bg-danger ms-2">Con errores</span>
-                            {% else %}
-                                <span class="badge bg-secondary ms-2">Estado desconocido</span>
-                            {% endif %}
-                        </p>
-                    </div>
-                    <div>
-                        <button id="toggleServicio" class="btn {% if system_status.servicio_activo %}btn-danger{% else %}btn-success{% endif %}">
-                            {% if system_status.servicio_activo %}
-                                <i class="fas fa-stop-circle"></i> Detener Servicio
-                            {% else %}
-                                <i class="fas fa-play-circle"></i> Iniciar Servicio
-                            {% endif %}
-                        </button>
-                    </div>
-                </div>
-                
-                <div class="row mt-3">
-                    <div class="col-md-4">
-                        <div class="status-item">
-                            <div class="status-label">Última verificación:</div>
-                            <div class="status-value">
-                                {% if system_status.ultima_verificacion %}
-                                    {{ system_status.ultima_verificacion|date:"d/m/Y H:i:s" }}
-                                {% else %}
-                                    Nunca
-                                {% endif %}
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="status-item">
-                            <div class="status-label">Último correo procesado:</div>
-                            <div class="status-value">
-                                {% if system_status.ultimo_correo_procesado %}
-                                    {{ system_status.ultimo_correo_procesado|date:"d/m/Y H:i:s" }}
-                                {% else %}
-                                    Ninguno
-                                {% endif %}
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="status-item">
-                            <div class="status-label">Errores recientes:</div>
-                            <div class="status-value">
-                                {% if system_status.errores_recientes > 0 %}
-                                    <i class="fas fa-exclamation-triangle text-warning"></i> 
-                                    {{ system_status.errores_recientes }} error(es) en las últimas 24h
-                                {% else %}
-                                    <i class="fas fa-check-circle text-success"></i> Sin errores
-                                {% endif %}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Métricas de 24 horas -->
-    <div class="stats-cards">
-        <div class="stat-card new-claims">
-            <div class="stat-card-icon">
-                <i class="fas fa-envelope-open-text"></i>
-            </div>
-            <div class="stat-card-title">Correos Procesados</div>
-            <div class="stat-card-value" id="correos-procesados">{{ metrics_24h.correos_procesados }}</div>
-            <div class="stat-card-footer">
-                <div class="stat-card-footer-text">Últimas 24 horas</div>
-            </div>
-        </div>
-        
-        <div class="stat-card pending-claims">
-            <div class="stat-card-icon">
-                <i class="fas fa-clipboard-list"></i>
-            </div>
-            <div class="stat-card-title">Glosas Extraídas</div>
-            <div class="stat-card-value" id="glosas-extraidas">{{ metrics_24h.glosas_extraidas }}</div>
-            <div class="stat-card-footer">
-                <div class="stat-card-footer-text">Últimas 24 horas</div>
-            </div>
-        </div>
-        
-        <div class="stat-card responded-claims">
-            <div class="stat-card-icon">
-                <i class="fas fa-hourglass-half"></i>
-            </div>
-            <div class="stat-card-title">Pendientes</div>
-            <div class="stat-card-value" id="pendientes">{{ metrics_24h.pendientes }}</div>
-            <div class="stat-card-footer">
-                <div class="stat-card-footer-text">Últimas 24 horas</div>
-            </div>
-        </div>
-        
-        <div class="stat-card pending-value">
-            <div class="stat-card-icon">
-                <i class="fas fa-exclamation-circle"></i>
-            </div>
-            <div class="stat-card-title">Errores</div>
-            <div class="stat-card-value" id="errores">{{ metrics_24h.errores }}</div>
-            <div class="stat-card-footer">
-                <div class="stat-card-footer-text">Últimas 24 horas</div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Gráficos -->
-    <div class="row mt-4">
-        <div class="col-lg-8">
-            <div class="dashboard-card">
-                <div class="dashboard-card-header">
-                    <div class="dashboard-card-title">Tendencias diarias (últimos 7 días)</div>
-                    <div class="dashboard-card-actions" id="refreshChart">
-                        <i class="fas fa-sync-alt"></i>
-                    </div>
-                </div>
-                <div class="dashboard-card-body">
-                    <canvas id="trendsChart" height="250" data-trends='{{ daily_trends_json|safe }}'></canvas>
-                </div>
-            </div>
-        </div>
-        
-        <div class="col-lg-4">
-            <div class="dashboard-card">
-                <div class="dashboard-card-header">
-                    <div class="dashboard-card-title">Actividad Reciente</div>
-                    <div class="dashboard-card-actions" id="refreshActivity">
-                        <i class="fas fa-sync-alt"></i>
-                    </div>
-                </div>
-                <div class="dashboard-card-body">
-                    <ul class="recent-activity-list">
-                        {% for log in recent_activity %}
-                            <li class="recent-activity-item">
+        <div class="dashboard-card-body">
+            <ul class="recent-activity-list">
+                {% if recent_activity %}
+                    {% for log in recent_activity %}
+                    <li class="recent-activity-item">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
                                 <div class="recent-activity-title">
+                                    <i class="
+                                        {% if 'ERROR' in log.evento %}fas fa-times-circle text-danger
+                                        {% elif 'SERVICIO_INICIADO' in log.evento %}fas fa-play-circle text-success
+                                        {% elif 'SERVICIO_DETENIDO' in log.evento %}fas fa-stop-circle text-secondary
+                                        {% elif 'CORREO' in log.evento %}fas fa-envelope text-primary
+                                        {% elif 'GLOSA' in log.evento %}fas fa-file-alt text-warning
+                                        {% else %}fas fa-info-circle text-info
+                                        {% endif %}
+                                        me-2
+                                    "></i>
                                     {{ log.get_evento_display }}
                                 </div>
-                                <div class="recent-activity-subtitle">
-                                    {{ log.detalles|truncatechars:70 }}
-                                </div>
-                                <div class="recent-activity-time">
-                                    <i class="far fa-clock"></i> {{ log.fecha_hora|date:"d/m/Y H:i:s" }}
-                                </div>
-                            </li>
-                        {% empty %}
-                            <li class="recent-activity-item">
-                                <div class="recent-activity-title text-center">
-                                    No hay actividad reciente
-                                </div>
-                            </li>
-                        {% endfor %}
-                    </ul>
-                    <div class="footer-action mt-2">
-                        <a href="#" class="btn-action">
-                            <i class="fas fa-search"></i> Ver Todos los Logs
+                                <div class="recent-activity-subtitle">{{ log.detalles }}</div>
+                            </div>
+                            <div class="recent-activity-time text-nowrap">{{ log.fecha_hora|date:"d/m/Y H:i:s" }}</div>
+                        </div>
+                    </li>
+                    {% endfor %}
+                    {% if recent_activity|length > 3 %}
+                    <li class="text-center mt-3">
+                        <a href="{% url 'ingesta_correo_correos' %}" class="btn btn-sm btn-outline-primary">
+                            <i class="fas fa-history"></i> Ver todo el historial
                         </a>
+                    </li>
+                    {% endif %}
+                {% else %}
+                    <li class="recent-activity-item">
+                        <div class="text-center py-4">
+                            <i class="fas fa-inbox text-muted mb-3" style="font-size: 3rem;"></i>
+                            <div class="recent-activity-title">No hay actividad reciente</div>
+                            <div class="recent-activity-subtitle">El servicio aún no ha registrado actividad</div>
+                        </div>
+                    </li>
+                {% endif %}
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- Footer Action -->
+<div class="footer-action">
+    <button class="btn-action" onclick="window.location.href='{% url 'ingesta_correo_correos' %}'">
+        <i class="fas fa-inbox"></i> Ver Listado de Correos
+    </button>
+    <button class="btn-secondary" onclick="window.location.href='{% url 'configuracion' %}#correo'">
+        <i class="fas fa-cog"></i> Configurar Ingesta
+    </button>
+</div>
+
+<!-- Modal de estado de verificación -->
+<div class="modal fade" id="verificationModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Verificación de Conexión</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="verification-status">
+                    <div class="verification-icon">
+                        <i class="fas fa-spinner fa-spin"></i>
+                    </div>
+                    <div class="verification-message">
+                        Verificando conexión...
+                    </div>
+                </div>
+                <div class="verification-details mt-3">
+                    <div class="verification-item">
+                        <span class="verification-label">Cuenta de correo:</span>
+                        <span class="verification-value" id="verification-email">-</span>
+                    </div>
+                    <div class="verification-item">
+                        <span class="verification-label">Estado OAuth:</span>
+                        <span class="verification-value" id="verification-oauth">
+                            <i class="fas fa-spinner fa-spin"></i> Verificando...
+                        </span>
+                    </div>
+                    <div class="verification-item">
+                        <span class="verification-label">Acceso a carpeta:</span>
+                        <span class="verification-value" id="verification-folder">
+                            <i class="fas fa-spinner fa-spin"></i> Verificando...
+                        </span>
+                    </div>
+                    <div class="verification-item">
+                        <span class="verification-label">Permisos de lectura:</span>
+                        <span class="verification-value" id="verification-permissions">
+                            <i class="fas fa-spinner fa-spin"></i> Verificando...
+                        </span>
                     </div>
                 </div>
             </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                <button type="button" class="btn btn-primary" id="fixConnectionBtn" style="display: none;">
+                    <i class="fas fa-wrench"></i> Arreglar Conexión
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast de notificación -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 5">
+    <div id="notification-toast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="toast-header">
+            <i class="fas fa-bell me-2"></i>
+            <strong class="me-auto" id="toast-title">Notificación</strong>
+            <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+        <div class="toast-body" id="toast-message">
+            Mensaje de notificación
         </div>
     </div>
 </div>
