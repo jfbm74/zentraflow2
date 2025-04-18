@@ -1,0 +1,214 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Dashboard de Ingesta de Correo{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/components/dashboard.css' %}">
+<link rel="stylesheet" href="{% static 'css/ingesta_correo/dashboard.css' %}">
+{% endblock %}
+
+{% block content %}
+{% csrf_token %}
+<!-- Dashboard de Ingesta de Correo -->
+<div class="container-fluid">
+    <div class="page-title">
+        <h1>Dashboard de Ingesta de Correo</h1>
+        <div class="d-flex">
+            <button class="btn-week me-2">
+                <i class="fas fa-calendar-week"></i> Últimos 7 días
+            </button>
+            <button class="btn-export">
+                <i class="fas fa-file-export"></i> Exportar
+            </button>
+        </div>
+    </div>
+
+    <!-- Estado del Sistema -->
+    <div class="system-status mb-4">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="card-title">Estado del Sistema</h5>
+                        <p class="mb-0">
+                            {% if system_status.servicio_activo %}
+                                <span class="badge bg-success">Servicio Activo</span>
+                            {% else %}
+                                <span class="badge bg-danger">Servicio Inactivo</span>
+                            {% endif %}
+                            
+                            {% if system_status.estado_general == 'success' %}
+                                <span class="badge bg-success ms-2">Funcionando correctamente</span>
+                            {% elif system_status.estado_general == 'warning' %}
+                                <span class="badge bg-warning ms-2">Con alertas</span>
+                            {% elif system_status.estado_general == 'error' %}
+                                <span class="badge bg-danger ms-2">Con errores</span>
+                            {% else %}
+                                <span class="badge bg-secondary ms-2">Estado desconocido</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                    <div>
+                        <button id="toggleServicio" class="btn {% if system_status.servicio_activo %}btn-danger{% else %}btn-success{% endif %}">
+                            {% if system_status.servicio_activo %}
+                                <i class="fas fa-stop-circle"></i> Detener Servicio
+                            {% else %}
+                                <i class="fas fa-play-circle"></i> Iniciar Servicio
+                            {% endif %}
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="row mt-3">
+                    <div class="col-md-4">
+                        <div class="status-item">
+                            <div class="status-label">Última verificación:</div>
+                            <div class="status-value">
+                                {% if system_status.ultima_verificacion %}
+                                    {{ system_status.ultima_verificacion|date:"d/m/Y H:i:s" }}
+                                {% else %}
+                                    Nunca
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="status-item">
+                            <div class="status-label">Último correo procesado:</div>
+                            <div class="status-value">
+                                {% if system_status.ultimo_correo_procesado %}
+                                    {{ system_status.ultimo_correo_procesado|date:"d/m/Y H:i:s" }}
+                                {% else %}
+                                    Ninguno
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="status-item">
+                            <div class="status-label">Errores recientes:</div>
+                            <div class="status-value">
+                                {% if system_status.errores_recientes > 0 %}
+                                    <i class="fas fa-exclamation-triangle text-warning"></i> 
+                                    {{ system_status.errores_recientes }} error(es) en las últimas 24h
+                                {% else %}
+                                    <i class="fas fa-check-circle text-success"></i> Sin errores
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Métricas de 24 horas -->
+    <div class="stats-cards">
+        <div class="stat-card new-claims">
+            <div class="stat-card-icon">
+                <i class="fas fa-envelope-open-text"></i>
+            </div>
+            <div class="stat-card-title">Correos Procesados</div>
+            <div class="stat-card-value" id="correos-procesados">{{ metrics_24h.correos_procesados }}</div>
+            <div class="stat-card-footer">
+                <div class="stat-card-footer-text">Últimas 24 horas</div>
+            </div>
+        </div>
+        
+        <div class="stat-card pending-claims">
+            <div class="stat-card-icon">
+                <i class="fas fa-clipboard-list"></i>
+            </div>
+            <div class="stat-card-title">Glosas Extraídas</div>
+            <div class="stat-card-value" id="glosas-extraidas">{{ metrics_24h.glosas_extraidas }}</div>
+            <div class="stat-card-footer">
+                <div class="stat-card-footer-text">Últimas 24 horas</div>
+            </div>
+        </div>
+        
+        <div class="stat-card responded-claims">
+            <div class="stat-card-icon">
+                <i class="fas fa-hourglass-half"></i>
+            </div>
+            <div class="stat-card-title">Pendientes</div>
+            <div class="stat-card-value" id="pendientes">{{ metrics_24h.pendientes }}</div>
+            <div class="stat-card-footer">
+                <div class="stat-card-footer-text">Últimas 24 horas</div>
+            </div>
+        </div>
+        
+        <div class="stat-card pending-value">
+            <div class="stat-card-icon">
+                <i class="fas fa-exclamation-circle"></i>
+            </div>
+            <div class="stat-card-title">Errores</div>
+            <div class="stat-card-value" id="errores">{{ metrics_24h.errores }}</div>
+            <div class="stat-card-footer">
+                <div class="stat-card-footer-text">Últimas 24 horas</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Gráficos -->
+    <div class="row mt-4">
+        <div class="col-lg-8">
+            <div class="dashboard-card">
+                <div class="dashboard-card-header">
+                    <div class="dashboard-card-title">Tendencias diarias (últimos 7 días)</div>
+                    <div class="dashboard-card-actions" id="refreshChart">
+                        <i class="fas fa-sync-alt"></i>
+                    </div>
+                </div>
+                <div class="dashboard-card-body">
+                    <canvas id="trendsChart" height="250" data-trends='{{ daily_trends_json|safe }}'></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-4">
+            <div class="dashboard-card">
+                <div class="dashboard-card-header">
+                    <div class="dashboard-card-title">Actividad Reciente</div>
+                    <div class="dashboard-card-actions" id="refreshActivity">
+                        <i class="fas fa-sync-alt"></i>
+                    </div>
+                </div>
+                <div class="dashboard-card-body">
+                    <ul class="recent-activity-list">
+                        {% for log in recent_activity %}
+                            <li class="recent-activity-item">
+                                <div class="recent-activity-title">
+                                    {{ log.get_evento_display }}
+                                </div>
+                                <div class="recent-activity-subtitle">
+                                    {{ log.detalles|truncatechars:70 }}
+                                </div>
+                                <div class="recent-activity-time">
+                                    <i class="far fa-clock"></i> {{ log.fecha_hora|date:"d/m/Y H:i:s" }}
+                                </div>
+                            </li>
+                        {% empty %}
+                            <li class="recent-activity-item">
+                                <div class="recent-activity-title text-center">
+                                    No hay actividad reciente
+                                </div>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                    <div class="footer-action mt-2">
+                        <a href="#" class="btn-action">
+                            <i class="fas fa-search"></i> Ver Todos los Logs
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
+<script src="{% static 'js/ingesta_correo/dashboard.js' %}"></script>
+{% endblock %}
