@@ -1,0 +1,488 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/ingesta_correo/dashboard.css' %}">
+<style>
+    /* Estilos específicos para la página de reglas */
+    .rule-list {
+        margin-top: 1.5rem;
+    }
+    
+    .rule-item {
+        border: 1px solid var(--gray-200);
+        border-radius: var(--border-radius);
+        background-color: white;
+        margin-bottom: 1rem;
+        transition: all var(--transition-speed) ease;
+    }
+    
+    .rule-item:hover {
+        box-shadow: var(--box-shadow);
+        transform: translateY(-2px);
+    }
+    
+    .rule-header {
+        padding: 1rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid var(--gray-200);
+        cursor: pointer;
+    }
+    
+    .rule-title {
+        font-weight: 600;
+        color: var(--gray-800);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .rule-title .handle {
+        cursor: grab;
+        color: var(--gray-400);
+    }
+    
+    .rule-title .handle:hover {
+        color: var(--gray-600);
+    }
+    
+    .rule-status {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        margin-right: 8px;
+    }
+    
+    .rule-status.active {
+        background-color: var(--success-color);
+    }
+    
+    .rule-status.inactive {
+        background-color: var(--gray-300);
+    }
+    
+    .rule-actions {
+        display: flex;
+        gap: 0.75rem;
+    }
+    
+    .rule-action {
+        background: none;
+        border: none;
+        color: var(--gray-500);
+        cursor: pointer;
+        transition: color var(--transition-speed) ease;
+    }
+    
+    .rule-action:hover {
+        color: var(--primary-color);
+    }
+    
+    .rule-action.delete:hover {
+        color: var(--danger-color);
+    }
+    
+    .rule-body {
+        padding: 1rem;
+        background-color: var(--gray-50);
+        display: none;
+    }
+    
+    .rule-body.show {
+        display: block;
+    }
+    
+    .rule-criteria {
+        margin-top: 0.5rem;
+    }
+    
+    .criteria-item {
+        display: flex;
+        margin-bottom: 0.5rem;
+    }
+    
+    .criteria-label {
+        font-weight: 500;
+        min-width: 120px;
+        color: var(--gray-600);
+    }
+    
+    .criteria-value {
+        color: var(--gray-800);
+    }
+    
+    .rule-badge {
+        display: inline-block;
+        padding: 0.35em 0.65em;
+        font-size: 0.75em;
+        font-weight: 500;
+        line-height: 1;
+        text-align: center;
+        white-space: nowrap;
+        vertical-align: baseline;
+        border-radius: 50rem;
+        background-color: var(--gray-100);
+        color: var(--gray-700);
+    }
+    
+    .rule-badge.field-asunto {
+        background-color: var(--primary-light);
+        color: var(--primary-color);
+    }
+    
+    .rule-badge.field-remitente {
+        background-color: var(--secondary-light);
+        color: var(--secondary-color);
+    }
+    
+    .rule-badge.field-contenido {
+        background-color: var(--warning-light);
+        color: var(--warning-color);
+    }
+    
+    .rule-badge.field-adjunto {
+        background-color: var(--info-light);
+        color: var(--info-color);
+    }
+    
+    .rule-badge.action-procesar {
+        background-color: var(--success-light);
+        color: var(--success-color);
+    }
+    
+    .rule-badge.action-ignorar {
+        background-color: var(--danger-light);
+        color: var(--danger-color);
+    }
+    
+    .rule-badge.action-archivar {
+        background-color: var(--warning-light);
+        color: var(--warning-color);
+    }
+    
+    .rule-badge.action-etiquetar {
+        background-color: var(--info-light);
+        color: var(--info-color);
+    }
+    
+    /* Modal de reglas */
+    .modal-rule .modal-header {
+        background: linear-gradient(to right, var(--primary-light), white);
+    }
+    
+    .modal-rule .modal-footer {
+        background-color: var(--gray-50);
+    }
+    
+    /* Placeholder de reglas vacías */
+    .empty-rules {
+        text-align: center;
+        padding: 3rem 2rem;
+        background-color: white;
+        border-radius: var(--border-radius);
+        border: 1px dashed var(--gray-300);
+        margin-top: 2rem;
+    }
+    
+    .empty-rules-icon {
+        font-size: 3rem;
+        color: var(--gray-300);
+        margin-bottom: 1.5rem;
+    }
+    
+    .empty-rules-text {
+        color: var(--gray-500);
+        margin-bottom: 1.5rem;
+    }
+    
+    /* Ajustes para drag & drop */
+    .rule-item.dragging {
+        opacity: 0.5;
+        box-shadow: var(--box-shadow-lg);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+{% csrf_token %}
+<div class="page-title">
+    <h1>Reglas de Filtrado</h1>
+    <div>
+        <button id="btnAddRule" class="btn-action">
+            <i class="fas fa-plus-circle"></i> Crear Nueva Regla
+        </button>
+    </div>
+</div>
+
+<!-- Estado del servicio -->
+{% if not servicio_existe %}
+<div class="alert alert-warning" role="alert">
+    <div class="alert-icon">
+        <i class="fas fa-exclamation-triangle"></i>
+    </div>
+    <div class="alert-message">
+        <strong>El servicio de ingesta no está activo.</strong> Para utilizar las reglas de filtrado, primero debes activar el servicio de ingesta en el <a href="{% url 'ingesta_correo_dashboard' %}" class="alert-link">Dashboard</a>.
+    </div>
+</div>
+{% endif %}
+
+<!-- Alertas para mensajes de retroalimentación -->
+<div id="successAlert" class="config-alert alert-success" style="display: none;">
+    <div class="alert-icon">
+        <i class="fas fa-check-circle"></i>
+    </div>
+    <div class="alert-message">
+        <strong>¡Éxito!</strong> <span id="successMessage"></span>
+    </div>
+</div>
+
+<div id="errorAlert" class="config-alert alert-danger" style="display: none;">
+    <div class="alert-icon">
+        <i class="fas fa-times-circle"></i>
+    </div>
+    <div class="alert-message">
+        <strong>Error:</strong> <span id="errorMessage"></span>
+    </div>
+</div>
+
+<!-- Lista de reglas -->
+<div class="rule-list" id="ruleList">
+    {% if reglas %}
+        {% for regla in reglas %}
+        <div class="rule-item" data-id="{{ regla.id }}" data-priority="{{ regla.prioridad }}">
+            <div class="rule-header" onclick="toggleRuleBody(this)">
+                <div class="rule-title">
+                    <span class="handle"><i class="fas fa-grip-lines"></i></span>
+                    <span class="rule-status {% if regla.activa %}active{% else %}inactive{% endif %}"></span>
+                    {{ regla.nombre }}
+                    <span class="rule-badge field-{{ regla.campo|lower }}">{{ regla.get_campo_display }}</span>
+                    <span class="rule-badge action-{{ regla.accion|lower }}">{{ regla.get_accion_display }}</span>
+                </div>
+                <div class="rule-actions">
+                    <button class="rule-action toggle-rule" onclick="toggleRuleState(event, {{ regla.id }}, {% if regla.activa %}false{% else %}true{% endif %})" title="{% if regla.activa %}Desactivar{% else %}Activar{% endif %}">
+                        <i class="fas {% if regla.activa %}fa-toggle-on{% else %}fa-toggle-off{% endif %}"></i>
+                    </button>
+                    <button class="rule-action edit-rule" onclick="editRule(event, {{ regla.id }})" title="Editar">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="rule-action delete delete-rule" onclick="deleteRule(event, {{ regla.id }})" title="Eliminar">
+                        <i class="fas fa-trash-alt"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="rule-body">
+                <div class="rule-criteria">
+                    <div class="criteria-item">
+                        <div class="criteria-label">Campo:</div>
+                        <div class="criteria-value">{{ regla.get_campo_display }}</div>
+                    </div>
+                    <div class="criteria-item">
+                        <div class="criteria-label">Condición:</div>
+                        <div class="criteria-value">{{ regla.get_condicion_display }}</div>
+                    </div>
+                    <div class="criteria-item">
+                        <div class="criteria-label">Valor:</div>
+                        <div class="criteria-value">{{ regla.valor }}</div>
+                    </div>
+                    <div class="criteria-item">
+                        <div class="criteria-label">Acción:</div>
+                        <div class="criteria-value">{{ regla.get_accion_display }}</div>
+                    </div>
+                    <div class="criteria-item">
+                        <div class="criteria-label">Prioridad:</div>
+                        <div class="criteria-value">{{ regla.prioridad }}</div>
+                    </div>
+                    <div class="criteria-item">
+                        <div class="criteria-label">Estado:</div>
+                        <div class="criteria-value">
+                            {% if regla.activa %}
+                            <span class="badge bg-success">Activa</span>
+                            {% else %}
+                            <span class="badge bg-secondary">Inactiva</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="empty-rules">
+            <div class="empty-rules-icon">
+                <i class="fas fa-filter"></i>
+            </div>
+            <h3>No hay reglas de filtrado</h3>
+            <p class="empty-rules-text">Las reglas de filtrado te permiten procesar automáticamente los correos entrantes según criterios específicos.</p>
+            <button id="btnEmptyAddRule" class="btn-action">
+                <i class="fas fa-plus-circle"></i> Crear Primera Regla
+            </button>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Modal para crear/editar regla -->
+<div class="modal fade" id="ruleModal" tabindex="-1" aria-labelledby="ruleModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg modal-rule">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="ruleModalLabel">Nueva Regla de Filtrado</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="ruleForm">
+                    <input type="hidden" id="ruleId" value="">
+                    
+                    <div class="mb-3">
+                        <label for="ruleName" class="form-label">Nombre de la regla</label>
+                        <input type="text" class="form-control" id="ruleName" placeholder="Nombre descriptivo de la regla" required>
+                        <div class="form-text">Un nombre claro para identificar fácilmente el propósito de la regla.</div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label for="ruleField" class="form-label">Campo</label>
+                            <select class="form-select" id="ruleField" required>
+                                <option value="">Seleccione campo</option>
+                                {% for value, display in campos %}
+                                <option value="{{ value }}">{{ display }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="ruleCondition" class="form-label">Condición</label>
+                            <select class="form-select" id="ruleCondition" required>
+                                <option value="">Seleccione condición</option>
+                                {% for value, display in condiciones %}
+                                <option value="{{ value }}">{{ display }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="ruleValue" class="form-label">Valor</label>
+                            <input type="text" class="form-control" id="ruleValue" placeholder="Valor a evaluar" required>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="ruleAction" class="form-label">Acción</label>
+                            <select class="form-select" id="ruleAction" required>
+                                <option value="">Seleccione acción</option>
+                                {% for value, display in acciones %}
+                                <option value="{{ value }}">{{ display }}</option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">¿Qué hacer cuando un correo cumple la condición?</div>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="rulePriority" class="form-label">Prioridad</label>
+                            <input type="number" class="form-control" id="rulePriority" min="0" max="100" value="0" required>
+                            <div class="form-text">Orden de evaluación.</div>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label d-block">Estado</label>
+                            <div class="form-check form-switch mt-2">
+                                <input class="form-check-input" type="checkbox" id="ruleActive" checked>
+                                <label class="form-check-label" for="ruleActive">Regla activa</label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Sección de Prueba de Regla -->
+                    <div id="testRuleSection" class="mt-4 p-3 bg-light rounded" style="display: none;">
+                        <h6 class="mb-3"><i class="fas fa-flask"></i> Probar Regla</h6>
+                        
+                        <!-- Campo de prueba: Asunto -->
+                        <div id="testSubjectField" class="test-field mb-3" style="display: none;">
+                            <label for="testSubject" class="form-label">Asunto de Prueba</label>
+                            <input type="text" class="form-control" id="testSubject" placeholder="Ejemplo: Factura #12345">
+                            <div class="form-text">Ingrese un asunto de correo para probar la regla.</div>
+                        </div>
+                        
+                        <!-- Campo de prueba: Remitente -->
+                        <div id="testSenderField" class="test-field mb-3" style="display: none;">
+                            <label for="testSender" class="form-label">Remitente de Prueba</label>
+                            <input type="text" class="form-control" id="testSender" placeholder="Ejemplo: facturacion@empresa.com">
+                            <div class="form-text">Ingrese un correo de remitente para probar la regla.</div>
+                        </div>
+                        
+                        <!-- Campo de prueba: Destinatario -->
+                        <div id="testRecipientField" class="test-field mb-3" style="display: none;">
+                            <label for="testRecipient" class="form-label">Destinatario de Prueba</label>
+                            <input type="text" class="form-control" id="testRecipient" placeholder="Ejemplo: soporte@miempresa.com">
+                            <div class="form-text">Ingrese un correo de destinatario para probar la regla.</div>
+                        </div>
+                        
+                        <!-- Campo de prueba: Contenido -->
+                        <div id="testContentField" class="test-field mb-3" style="display: none;">
+                            <label for="testContent" class="form-label">Contenido de Prueba</label>
+                            <textarea class="form-control" id="testContent" rows="3" placeholder="Ejemplo: Se adjunta factura del mes de Abril..."></textarea>
+                            <div class="form-text">Ingrese un texto de contenido para probar la regla.</div>
+                        </div>
+                        
+                        <!-- Campo de prueba: Adjunto -->
+                        <div id="testAttachmentField" class="test-field mb-3" style="display: none;">
+                            <label for="testAttachment" class="form-label">Nombre de Adjunto de Prueba</label>
+                            <input type="text" class="form-control" id="testAttachment" placeholder="Ejemplo: factura_abril_2025.pdf">
+                            <div class="form-text">Ingrese un nombre de archivo adjunto para probar la regla.</div>
+                        </div>
+                        
+                        <!-- Botón de Prueba -->
+                        <button type="button" class="btn btn-outline-primary" id="btnTestRule">
+                            <i class="fas fa-flask"></i> Probar Regla
+                        </button>
+                        
+                        <!-- Resultado de la Prueba -->
+                        <div id="testResultContainer" class="mt-3" style="display: none;">
+                            <div id="testResult" class="alert alert-info">
+                                <i class="fas fa-spinner fa-spin"></i> Probando...
+                            </div>
+                            <div id="testMessage" class="mt-2 text-secondary"></div>
+                            <div id="testAction" class="mt-2 fw-bold"></div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary-action" data-bs-dismiss="modal">
+                    <i class="fas fa-times"></i> Cancelar
+                </button>
+                <button type="button" class="btn-action" id="btnSaveRule">
+                    <i class="fas fa-save"></i> Guardar Regla
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de confirmación para eliminar -->
+<div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirmar Eliminación</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>¿Estás seguro de que deseas eliminar esta regla? Esta acción no se puede deshacer.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary-action" data-bs-dismiss="modal">
+                    <i class="fas fa-times"></i> Cancelar
+                </button>
+                <button type="button" class="btn btn-danger" id="btnConfirmDelete">
+                    <i class="fas fa-trash-alt"></i> Eliminar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/ingesta_correo/reglas_filtrado.js' %}"></script>
+<script src="{% static 'js/ingesta_correo/reglas_test.js' %}"></script>
+{% endblock %}
