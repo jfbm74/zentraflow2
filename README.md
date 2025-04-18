@@ -1,6 +1,8 @@
 ZentraFlow
 ==========
 
+
+
 ZentraFlow es una plataforma multi-tenant para automatizar la ingesta y procesamiento de correos electrónicos. La aplicación permite a los usuarios configurar conexiones OAuth con servicios de correo (como Gmail), monitorear carpetas específicas y procesar automáticamente los mensajes entrantes para extraer información relevante.
 
 Características principales

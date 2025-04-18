@@ -171,6 +171,65 @@
     background-color: #fee2e2;
 }
 
+/* Estilos para el submenú */
+.sidebar-submenu {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease-out;
+    background-color: #f8fafc;
+    margin-left: 1rem;
+    border-left: 1px solid #e5e7eb;
+}
+
+.sidebar-submenu.show {
+    max-height: 500px; /* Altura máxima para la animación */
+    transition: max-height 0.3s ease-in;
+}
+
+/* Ocultar submenú cuando el sidebar está colapsado */
+.sidebar.collapsed .sidebar-submenu {
+    display: none;
+}
+
+/* Estilos para los items del submenú */
+.sidebar-submenu .sidebar-menu-item {
+    margin: 0;
+}
+
+.sidebar-submenu .sidebar-menu-link {
+    padding: 0.5rem 1rem 0.5rem 2.5rem;
+    font-size: 0.85rem;
+}
+
+/* Tooltips para el sidebar colapsado */
+.sidebar.collapsed .sidebar-menu-link {
+    position: relative;
+}
+
+.sidebar.collapsed .sidebar-menu-link::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    left: 100%;
+    top: 50%;
+    transform: translateY(-50%);
+    background-color: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+    white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.2s ease;
+    z-index: 1000;
+    margin-left: 0.5rem;
+}
+
+.sidebar.collapsed .sidebar-menu-link:hover::after {
+    opacity: 1;
+    visibility: visible;
+}
+
 /* Responsive sidebar */
 @media (max-width: 991.98px) {
     .sidebar {

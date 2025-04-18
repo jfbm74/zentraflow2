@@ -23,25 +23,39 @@
         <div class="sidebar-section-title">Navegación</div>
         <ul class="sidebar-menu">
             <li class="sidebar-menu-item">
-                <a href="{% url 'dashboard' %}" class="sidebar-menu-link {% if active_menu == 'dashboard' %}active{% endif %}">
+                <a href="{% url 'dashboard' %}" class="sidebar-menu-link {% if active_menu == 'dashboard' %}active{% endif %}" data-tooltip="Dashboard">
                     <span class="sidebar-menu-icon"><i class="fas fa-home"></i></span>
                     <span class="sidebar-menu-text">Dashboard</span>
                 </a>
             </li>
             
             <li class="sidebar-menu-item">
-                <a href="#" class="sidebar-menu-link {% if active_menu == 'glosas' %}active{% endif %}">
+                <a href="#" class="sidebar-menu-link {% if active_menu == 'glosas' %}active{% endif %}" data-tooltip="Glosas">
                     <span class="sidebar-menu-icon"><i class="fas fa-file-medical-alt"></i></span>
                     <span class="sidebar-menu-text">Glosas</span>
                 </a>
             </li>
             
-            <!-- Nuevo enlace para Ingesta de Correo -->
+            <!-- Menú de Ingesta de Correo -->
             <li class="sidebar-menu-item">
-                <a href="{% url 'ingesta_correo_dashboard' %}" class="sidebar-menu-link {% if active_menu == 'ingesta_correo' %}active{% endif %}">
+                <a href="{% url 'ingesta_correo_dashboard' %}" class="sidebar-menu-link {% if active_menu == 'ingesta_correo' %}active{% endif %}" data-tooltip="Ingesta de Correo">
                     <span class="sidebar-menu-icon"><i class="fas fa-envelope"></i></span>
                     <span class="sidebar-menu-text">Ingesta de Correo</span>
                 </a>
+                <ul class="sidebar-submenu {% if active_menu == 'ingesta_correo' %}show{% endif %}">
+                    <li class="sidebar-menu-item">
+                        <a href="{% url 'ingesta_correo_correos' %}" class="sidebar-menu-link {% if active_menu == 'ingesta_correo' and active_submenu == 'correos' %}active{% endif %}" data-tooltip="Correos Ingesta">
+                            <span class="sidebar-menu-icon"><i class="fas fa-envelope"></i></span>
+                            <span class="sidebar-menu-text">Correos Ingesta</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-menu-item">
+                        <a href="{% url 'ingesta_correo_reglas' %}" class="sidebar-menu-link {% if active_menu == 'ingesta_correo' and active_submenu == 'reglas' %}active{% endif %}" data-tooltip="Reglas de Filtrado">
+                            <span class="sidebar-menu-icon"><i class="fas fa-filter"></i></span>
+                            <span class="sidebar-menu-text">Reglas de Filtrado</span>
+                        </a>
+                    </li>
+                </ul>
             </li>
         </ul>
         
@@ -51,7 +65,7 @@
         <div class="sidebar-section-title">Administración</div>
         <ul class="sidebar-menu">
             <li class="sidebar-menu-item">
-                <a href="{% url 'configuracion' %}" class="sidebar-menu-link {% if active_menu == 'configuracion' %}active{% endif %}">
+                <a href="{% url 'configuracion' %}" class="sidebar-menu-link {% if active_menu == 'configuracion' %}active{% endif %}" data-tooltip="Configuración">
                     <span class="sidebar-menu-icon"><i class="fas fa-cog"></i></span>
                     <span class="sidebar-menu-text">Configuración</span>
                 </a>
@@ -59,7 +73,7 @@
             
             {% if user.is_staff %}
                 <li class="sidebar-menu-item">
-                    <a href="{% url 'admin:index' %}" class="sidebar-menu-link">
+                    <a href="{% url 'admin:index' %}" class="sidebar-menu-link" data-tooltip="Admin">
                         <span class="sidebar-menu-icon"><i class="fas fa-user-shield"></i></span>
                         <span class="sidebar-menu-text">Admin</span>
                     </a>
@@ -73,7 +87,7 @@
         <div class="sidebar-section-title">Cuenta</div>
         <ul class="sidebar-menu">
             <li class="sidebar-menu-item">
-                <a href="{% url 'logout' %}" class="sidebar-menu-link logout-link">
+                <a href="{% url 'logout' %}" class="sidebar-menu-link logout-link" data-tooltip="Cerrar sesión">
                     <span class="sidebar-menu-icon"><i class="fas fa-sign-out-alt"></i></span>
                     <span class="sidebar-menu-text">Cerrar sesión</span>
                 </a>

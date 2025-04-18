@@ -1,0 +1,32 @@
+RFC 2: Sistema de Gestión de Reglas de Filtrado
+-----------------------------------------------
+
+### Descripción
+
+Desarrollar un sistema completo para la creación y gestión de reglas de filtrado de correos entrantes, permitiendo a los usuarios definir criterios específicos para procesar automáticamente los correos.
+
+### Requisitos Funcionales
+
+1.  Crear nuevas reglas de filtrado con las siguientes propiedades:
+    -   Nombre descriptivo
+    -   Campo a evaluar (remitente, asunto, cuerpo, nombre de adjunto)
+    -   Condición (contiene, no contiene, es igual, empieza con, termina con, regex)
+    -   Valor de la condición
+    -   Acción a realizar (procesar, ignorar, marcar para revisión)
+    -   Estado (activa/inactiva)
+    -   Prioridad de ejecución
+2.  Visualizar todas las reglas en una tabla ordenable y filtrable
+3.  Editar reglas existentes
+4.  Eliminar reglas (con confirmación)
+5.  Activar/desactivar reglas con un interruptor visual (Pendiente)
+6.  Reordenar reglas mediante arrastrar y soltar para cambiar prioridad (Pendiente)
+7.  Probar reglas contra ejemplos de correos (Pendiente)
+8.  Duplicar reglas existentes como base para nuevas reglas (Pendiente)
+
+### Criterios de Aceptación
+
+-   Las reglas deben aplicarse en orden de prioridad
+-   Al editar o crear reglas, debe validarse que los campos obligatorios estén completos
+-   Debe existir confirmación antes de eliminar reglas
+-   El cambio de estado (activo/inactivo) debe reflejarse inmediatamente
+-   La interfaz debe ser intuitiva y proporcionar retroalimentación clara
