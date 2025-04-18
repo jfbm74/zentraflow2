@@ -5,6 +5,85 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/ingesta_correo/dashboard.css' %}">
+<style>
+    .chart-container {
+        position: relative;
+        height: 200px;
+        width: 100%;
+    }
+
+    .dashboard-card-body.py-2 {
+        padding-top: 0.5rem !important;
+        padding-bottom: 0.5rem !important;
+    }
+
+    /* Estilos para los controles del gráfico */
+    .chart-controls {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .period-select {
+        position: relative;
+    }
+
+    .period-select .form-select {
+        padding: 0.25rem 2rem 0.25rem 0.75rem;
+        font-size: 0.875rem;
+        border: 1px solid #e2e8f0;
+        border-radius: 0.5rem;
+        background-color: #f8fafc;
+        color: #1e293b;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .period-select .form-select:hover {
+        border-color: #cbd5e1;
+        background-color: #f1f5f9;
+    }
+
+    .period-select .form-select:focus {
+        border-color: #6366f1;
+        box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.1);
+        outline: none;
+    }
+
+    .btn-refresh {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        padding: 0;
+        border: 1px solid #e2e8f0;
+        border-radius: 0.5rem;
+        background-color: #f8fafc;
+        color: #64748b;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .btn-refresh:hover {
+        background-color: #f1f5f9;
+        color: #1e293b;
+        border-color: #cbd5e1;
+    }
+
+    .btn-refresh i {
+        font-size: 0.875rem;
+    }
+
+    .btn-refresh.loading i {
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+</style>
 {% endblock %}
 
 {% block content %}
@@ -40,124 +119,158 @@
 
 <!-- Estado del Sistema Card -->
 <div class="config-card mb-4">
-    <div class="config-card-header">
-        <h3><i class="fas fa-heartbeat"></i> Estado del Servicio</h3>
-        <button class="btn btn-outline-primary btn-sm" id="refreshChart">
-            <i class="fas fa-sync-alt"></i> Actualizar
-        </button>
+    <div class="config-card-header d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-center gap-3">
+            <h3 class="mb-0"><i class="fas fa-heartbeat"></i> Estado del Servicio</h3>
+            <span class="status-badge">
+                {% if system_status.servicio_activo and system_status.oauth_authorized and system_status.oauth_token_valid %}
+                    <span class="badge bg-success"><i class="fas fa-check-circle"></i> En funcionamiento</span>
+                {% elif system_status.servicio_activo and not system_status.oauth_authorized %}
+                    <span class="badge bg-warning"><i class="fas fa-exclamation-triangle"></i> Inconsistente - OAuth no autorizado</span>
+                {% elif system_status.servicio_activo and not system_status.oauth_token_valid %}
+                    <span class="badge bg-warning"><i class="fas fa-exclamation-triangle"></i> Inconsistente - Token expirado</span>
+                {% elif system_status.estado_general == 'error' %}
+                    <span class="badge bg-danger"><i class="fas fa-times-circle"></i> Con errores</span>
+                {% else %}
+                    <span class="badge bg-secondary"><i class="fas fa-pause-circle"></i> Inactivo</span>
+                {% endif %}
+            </span>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <button class="btn btn-outline-primary btn-sm" id="refreshChart">
+                <i class="fas fa-sync-alt"></i> Actualizar
+            </button>
+            <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#serviceStatusDetails" aria-expanded="false" aria-controls="serviceStatusDetails">
+                <i class="fas fa-chevron-down"></i> Detalles
+            </button>
+        </div>
     </div>
-    <div class="config-card-body">
-        <div class="row">
-            <div class="col-md-6">
-                <div class="status-item">
-                    <span class="status-label">Estado General:</span>
-                    <span class="status-value">
-                        {% if system_status.servicio_activo and system_status.oauth_authorized and system_status.oauth_token_valid %}
-                            <span class="badge bg-success"><i class="fas fa-check-circle"></i> En funcionamiento</span>
-                        {% elif system_status.servicio_activo and not system_status.oauth_authorized %}
-                            <span class="badge bg-warning"><i class="fas fa-exclamation-triangle"></i> Inconsistente - OAuth no autorizado</span>
-                        {% elif system_status.servicio_activo and not system_status.oauth_token_valid %}
-                            <span class="badge bg-warning"><i class="fas fa-exclamation-triangle"></i> Inconsistente - Token expirado</span>
-                        {% elif system_status.estado_general == 'error' %}
-                            <span class="badge bg-danger"><i class="fas fa-times-circle"></i> Con errores</span>
-                        {% else %}
-                            <span class="badge bg-secondary"><i class="fas fa-pause-circle"></i> Inactivo</span>
-                        {% endif %}
-                    </span>
+    <div class="collapse" id="serviceStatusDetails">
+        <div class="config-card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="system-status-overview">
+                        <div class="system-status-icon {% if system_status.servicio_activo and system_status.oauth_authorized and system_status.oauth_token_valid %}active{% else %}inactive{% endif %}">
+                            <i class="fas {% if system_status.servicio_activo and system_status.oauth_authorized and system_status.oauth_token_valid %}fa-check-circle{% else %}fa-exclamation-triangle{% endif %}"></i>
+                        </div>
+                        <div class="system-status-details">
+                            <h4 class="system-status-title">
+                                {% if system_status.servicio_activo and system_status.oauth_authorized and system_status.oauth_token_valid %}
+                                    Sistema Operativo
+                                {% else %}
+                                    Sistema Requiere Atención
+                                {% endif %}
+                            </h4>
+                            <p class="system-status-description">
+                                {% if system_status.servicio_activo and system_status.oauth_authorized and system_status.oauth_token_valid %}
+                                    Todos los componentes están funcionando correctamente
+                                {% elif not system_status.oauth_authorized %}
+                                    La conexión OAuth no está autorizada
+                                {% elif not system_status.oauth_token_valid %}
+                                    El token de autorización ha expirado
+                                {% elif not system_status.servicio_activo %}
+                                    El servicio está inactivo
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="status-item">
+                        <span class="status-label">Servicio:</span>
+                        <span id="service-status" class="status-value">
+                            {% if system_status.servicio_activo %}
+                                <span class="text-success"><i class="fas fa-circle"></i> Activo</span>
+                            {% else %}
+                                <span class="text-secondary"><i class="fas fa-circle"></i> Inactivo</span>
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">OAuth:</span>
+                        <span id="oauth-status" class="status-value">
+                            {% if system_status.oauth_authorized and system_status.oauth_token_valid %}
+                                <span class="text-success"><i class="fas fa-circle"></i> Autorizado</span>
+                            {% elif system_status.oauth_authorized and not system_status.oauth_token_valid %}
+                                <span class="text-warning"><i class="fas fa-exclamation-circle"></i> Token expirado</span>
+                            {% else %}
+                                <span class="text-danger"><i class="fas fa-circle"></i> No autorizado</span>
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Cuenta asociada:</span>
+                        <span id="email-account" class="status-value">
+                            {% if system_status.email_address %}
+                                <span class="email-address" title="{{ system_status.email_address }}">
+                                    <i class="fas fa-envelope text-secondary me-1"></i>{{ system_status.email_address }}
+                                </span>
+                            {% else %}
+                                <span class="text-muted">No configurada</span>
+                                <a href="{% url 'configuracion' %}#correo" class="ms-2 badge bg-primary">
+                                    <i class="fas fa-cog"></i> Configurar
+                                </a>
+                            {% endif %}
+                        </span>
+                    </div>
                 </div>
-                <div class="status-item">
-                    <span class="status-label">Servicio:</span>
-                    <span id="service-status" class="status-value">
-                        {% if system_status.servicio_activo %}
-                            <span class="text-success"><i class="fas fa-circle"></i> Activo</span>
-                        {% else %}
-                            <span class="text-secondary"><i class="fas fa-circle"></i> Inactivo</span>
-                        {% endif %}
-                    </span>
-                </div>
-                <div class="status-item">
-                    <span class="status-label">OAuth:</span>
-                    <span id="oauth-status" class="status-value">
-                        {% if system_status.oauth_authorized and system_status.oauth_token_valid %}
-                            <span class="text-success"><i class="fas fa-circle"></i> Autorizado</span>
-                        {% elif system_status.oauth_authorized and not system_status.oauth_token_valid %}
-                            <span class="text-warning"><i class="fas fa-exclamation-circle"></i> Token expirado</span>
-                        {% else %}
-                            <span class="text-danger"><i class="fas fa-circle"></i> No autorizado</span>
-                        {% endif %}
-                    </span>
-                </div>
-                <div class="status-item">
-                    <span class="status-label">Cuenta asociada:</span>
-                    <span id="email-account" class="status-value">
-                        {% if system_status.email_address %}
-                            <span title="{{ system_status.email_address }}">{{ system_status.email_address }}</span>
-                        {% else %}
-                            <span class="text-muted">No configurada</span>
-                            <a href="{% url 'configuracion' %}#correo" class="ms-2 badge bg-primary">
-                                <i class="fas fa-cog"></i> Configurar
-                            </a>
-                        {% endif %}
-                    </span>
+                <div class="col-md-6">
+                    <div class="status-item">
+                        <span class="status-label">Última verificación:</span>
+                        <span id="last-check" class="status-value">
+                            {% if system_status.ultima_verificacion %}
+                                <span class="timestamp" title="{{ system_status.ultima_verificacion|date:'d/m/Y H:i:s' }}">
+                                    <i class="fas fa-clock text-secondary me-1"></i>{{ system_status.ultima_verificacion|date:"d/m/Y H:i:s" }}
+                                </span>
+                            {% else %}
+                                <span class="text-muted">Nunca</span>
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Último correo procesado:</span>
+                        <span id="last-processed" class="status-value">
+                            {% if system_status.ultimo_correo_procesado %}
+                                <span class="timestamp" title="{{ system_status.ultimo_correo_procesado|date:'d/m/Y H:i:s' }}">
+                                    <i class="fas fa-clock text-secondary me-1"></i>{{ system_status.ultimo_correo_procesado|date:"d/m/Y H:i:s" }}
+                                </span>
+                            {% else %}
+                                <span class="text-muted">Nunca</span>
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Errores recientes:</span>
+                        <span id="recent-errors" class="status-value">
+                            {% if system_status.errores_recientes > 0 %}
+                                <span class="text-danger">{{ system_status.errores_recientes }}</span>
+                                <a href="{% url 'ingesta_correo_correos' %}?estado=ERROR" class="ms-2 badge bg-danger">
+                                    <i class="fas fa-search"></i> Ver errores
+                                </a>
+                            {% else %}
+                                <span class="text-success">0</span>
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Reintentos:</span>
+                        <span id="retry-count" class="status-value">{{ system_status.reintentos|default:"0" }}</span>
+                    </div>
                 </div>
             </div>
-            <div class="col-md-6">
-                <div class="status-item">
-                    <span class="status-label">Última verificación:</span>
-                    <span id="last-check" class="status-value">
-                        {% if system_status.ultima_verificacion %}
-                            <span title="{{ system_status.ultima_verificacion|date:'d/m/Y H:i:s' }}">
-                                {{ system_status.ultima_verificacion|date:"d/m/Y H:i:s" }}
-                            </span>
-                        {% else %}
-                            <span class="text-muted">Nunca</span>
-                        {% endif %}
-                    </span>
-                </div>
-                <div class="status-item">
-                    <span class="status-label">Último correo procesado:</span>
-                    <span id="last-processed" class="status-value">
-                        {% if system_status.ultimo_correo_procesado %}
-                            <span title="{{ system_status.ultimo_correo_procesado|date:'d/m/Y H:i:s' }}">
-                                {{ system_status.ultimo_correo_procesado|date:"d/m/Y H:i:s" }}
-                            </span>
-                        {% else %}
-                            <span class="text-muted">Nunca</span>
-                        {% endif %}
-                    </span>
-                </div>
-                <div class="status-item">
-                    <span class="status-label">Errores recientes:</span>
-                    <span id="recent-errors" class="status-value">
-                        {% if system_status.errores_recientes > 0 %}
-                            <span class="text-danger">{{ system_status.errores_recientes }}</span>
-                            <a href="{% url 'ingesta_correo_correos' %}?estado=ERROR" class="ms-2 badge bg-danger">
-                                <i class="fas fa-search"></i> Ver errores
-                            </a>
-                        {% else %}
-                            <span class="text-success">0</span>
-                        {% endif %}
-                    </span>
-                </div>
-                <div class="status-item">
-                    <span class="status-label">Reintentos:</span>
-                    <span id="retry-count" class="status-value">{{ system_status.reintentos|default:"0" }}</span>
-                </div>
+            
+            {% if not system_status.oauth_authorized or not system_status.oauth_token_valid %}
+            <div class="alert alert-warning mt-3 mb-0">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                <strong>Atención:</strong> 
+                {% if not system_status.oauth_authorized %}
+                    No se ha autorizado la conexión OAuth. 
+                {% elif not system_status.oauth_token_valid %}
+                    El token de autorización ha expirado.
+                {% endif %}
+                <a href="{% url 'configuracion' %}#correo" class="alert-link">Configure la conexión</a> para habilitar el servicio.
             </div>
-        </div>
-        
-        {% if not system_status.oauth_authorized or not system_status.oauth_token_valid %}
-        <div class="alert alert-warning mt-3 mb-0">
-            <i class="fas fa-exclamation-triangle me-2"></i>
-            <strong>Atención:</strong> 
-            {% if not system_status.oauth_authorized %}
-                No se ha autorizado la conexión OAuth. 
-            {% elif not system_status.oauth_token_valid %}
-                El token de autorización ha expirado.
             {% endif %}
-            <a href="{% url 'configuracion' %}#correo" class="alert-link">Configure la conexión</a> para habilitar el servicio.
         </div>
-        {% endif %}
     </div>
 </div>
 
@@ -207,23 +320,29 @@
 
 <!-- Activity Section -->
 <div class="activity-section">
-    <!-- Trends Chart -->
-    <div class="dashboard-card">
+    <!-- 3. Gráfico de tendencias mejorado -->
+    <div class="dashboard-card mb-4">
         <div class="dashboard-card-header">
-            <div class="dashboard-card-title">Tendencias de Actividad</div>
-            <div class="d-flex align-items-center gap-2">
-                <select class="form-select form-select-sm" id="chartPeriod">
-                    <option value="7" selected>Últimos 7 días</option>
-                    <option value="14">Últimos 14 días</option>
-                    <option value="30">Últimos 30 días</option>
-                </select>
-                <button class="btn btn-outline-primary btn-sm" id="refreshTrends">
-                    <i class="fas fa-sync-alt"></i> Actualizar
+            <div class="dashboard-card-title">
+                <i class="fas fa-chart-line me-2"></i>Tendencias de Actividad
+            </div>
+            <div class="chart-controls">
+                <div class="period-select">
+                    <select class="form-select form-select-sm" id="chartPeriod">
+                        <option value="7" selected>Últimos 7 días</option>
+                        <option value="14">Últimos 14 días</option>
+                        <option value="30">Últimos 30 días</option>
+                    </select>
+                </div>
+                <button class="btn-refresh" id="refreshTrends" title="Actualizar datos">
+                    <i class="fas fa-sync-alt"></i>
                 </button>
             </div>
         </div>
-        <div class="dashboard-card-body">
-            <canvas id="trendsChart" height="280" data-trends="{{ daily_trends_json }}"></canvas>
+        <div class="dashboard-card-body py-2">
+            <div class="chart-container">
+                <canvas id="trendsChart" height="200" data-trends="{{ daily_trends_json }}"></canvas>
+            </div>
         </div>
     </div>
 
@@ -362,4 +481,40 @@
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
 <script src="{% static 'js/ingesta_correo/dashboard.js' %}"></script>
+<script>
+    // Añadir rotación al icono cuando se expande/colapsa
+    document.addEventListener('DOMContentLoaded', function() {
+        const collapseButton = document.querySelector('[data-bs-toggle="collapse"]');
+        const icon = collapseButton.querySelector('i');
+        
+        document.getElementById('serviceStatusDetails').addEventListener('show.bs.collapse', function () {
+            icon.style.transform = 'rotate(180deg)';
+        });
+        
+        document.getElementById('serviceStatusDetails').addEventListener('hide.bs.collapse', function () {
+            icon.style.transform = 'rotate(0deg)';
+        });
+    });
+
+    // Configuración adicional para el gráfico
+    document.addEventListener('DOMContentLoaded', function() {
+        const ctx = document.getElementById('trendsChart').getContext('2d');
+        // Asegurarse de que el gráfico mantenga su aspecto responsive
+        Chart.defaults.maintainAspectRatio = false;
+        Chart.defaults.responsive = true;
+    });
+
+    // Añadir efecto de loading al botón de actualizar
+    document.addEventListener('DOMContentLoaded', function() {
+        const refreshBtn = document.getElementById('refreshTrends');
+        
+        refreshBtn.addEventListener('click', function() {
+            this.classList.add('loading');
+            // Remover la clase después de la actualización (ajustar según tu lógica de actualización)
+            setTimeout(() => {
+                this.classList.remove('loading');
+            }, 1000);
+        });
+    });
+</script>
 {% endblock %}
