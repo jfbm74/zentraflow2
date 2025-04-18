@@ -11,8 +11,10 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 import os
-import sys  # Añadir esta línea
+import sys 
 from pathlib import Path
+from celery.schedules import crontab
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -188,4 +190,15 @@ LOGGING = {
     },
 }
 
+CELERY_BEAT_SCHEDULE = {
+    'sync-oauth-status': {
+        'task': 'apps.ingesta_correo.tasks.sync_oauth_and_service_status',
+        'schedule': crontab(minute='*/5'),   # Ejecutar cada 5 minutos  
+    },
+}
 
+CELERY_BROKER_URL = 'redis://localhost:6379/0'
+CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
