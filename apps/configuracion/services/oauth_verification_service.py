@@ -244,19 +244,15 @@ class OAuthVerificationService:
 
     @staticmethod
     def update_service_status(tenant, credentials):
-        """
-        Actualiza el estado del servicio de ingesta basado en el estado de OAuth.
-        
-        Args:
-            tenant: El tenant a actualizar
-            credentials: Las credenciales OAuth verificadas
-        """
         try:
             # Obtener el servicio de ingesta
             servicio, created = ServicioIngesta.objects.get_or_create(tenant=tenant)
             
-            # Si las credenciales no están autorizadas, desactivar el servicio
-            if not credentials.authorized or not credentials.is_token_valid():
+            # Verificar estado de las credenciales
+            credentials_valid = credentials.authorized and credentials.is_token_valid()
+            
+            # Actualizar estado del servicio según las credenciales
+            if not credentials_valid:
                 if servicio.activo:
                     logger.info(f"Desactivando servicio de ingesta para tenant {tenant.id} por credenciales inválidas")
                     servicio.activo = False
@@ -268,6 +264,19 @@ class OAuthVerificationService:
                         evento='SERVICIO_DETENIDO',
                         detalles="Servicio de ingesta detenido automáticamente por estado inválido de credenciales OAuth",
                     )
+            else:
+                # Si las credenciales son válidas pero el servicio está inactivo, activarlo
+                if not servicio.activo:
+                    logger.info(f"Activando servicio de ingesta para tenant {tenant.id} porque las credenciales son válidas")
+                    servicio.activo = True
+                    servicio.save()
+                    
+                    # Registrar el evento en el log
+                    LogActividad.objects.create(
+                        tenant=tenant,
+                        evento='SERVICIO_INICIADO',
+                        detalles="Servicio de ingesta activado automáticamente tras verificación exitosa de credenciales OAuth",
+                    )
             
             # Actualizar última verificación
             servicio.ultima_verificacion = timezone.now()
@@ -275,3 +284,34 @@ class OAuthVerificationService:
             
         except Exception as e:
             logger.exception(f"Error al actualizar estado del servicio: {str(e)}")
+            """
+            Actualiza el estado del servicio de ingesta basado en el estado de OAuth.
+            
+            Args:
+                tenant: El tenant a actualizar
+                credentials: Las credenciales OAuth verificadas
+            """
+            try:
+                # Obtener el servicio de ingesta
+                servicio, created = ServicioIngesta.objects.get_or_create(tenant=tenant)
+                
+                # Si las credenciales no están autorizadas, desactivar el servicio
+                if not credentials.authorized or not credentials.is_token_valid():
+                    if servicio.activo:
+                        logger.info(f"Desactivando servicio de ingesta para tenant {tenant.id} por credenciales inválidas")
+                        servicio.activo = False
+                        servicio.save()
+                        
+                        # Registrar el evento en el log
+                        LogActividad.objects.create(
+                            tenant=tenant,
+                            evento='SERVICIO_DETENIDO',
+                            detalles="Servicio de ingesta detenido automáticamente por estado inválido de credenciales OAuth",
+                        )
+                
+                # Actualizar última verificación
+                servicio.ultima_verificacion = timezone.now()
+                servicio.save()
+                
+            except Exception as e:
+                logger.exception(f"Error al actualizar estado del servicio: {str(e)}")
