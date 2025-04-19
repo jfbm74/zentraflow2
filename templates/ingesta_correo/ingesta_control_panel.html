@@ -1,0 +1,897 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Panel de Control de Ingesta Programada | ZentraFlow{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/ingesta_correo/dashboard.css' %}">
+{% endblock %}
+
+{% block content %}
+{% csrf_token %}
+<div class="container-fluid">
+    <!-- Título de la página -->
+    <div class="page-title">
+        <h1><i class="fas fa-calendar-alt me-2"></i> Panel de Control de Ingesta Programada</h1>
+        
+        <div class="d-flex gap-2">
+            {% if servicio and servicio.activo %}
+            <button id="btnEjecutarAhora" class="btn-secondary-action">
+                <i class="fas fa-play"></i> Verificar Ahora
+            </button>
+            <button id="btnToggleServicio" class="btn-action" style="background-color: #ef4444;">
+                <i class="fas fa-stop-circle"></i> Detener Servicio
+            </button>
+            {% else %}
+            <button id="btnToggleServicio" class="btn-action">
+                <i class="fas fa-play-circle"></i> Iniciar Servicio
+            </button>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Alerta de estado -->
+    <div id="statusAlert" class="config-alert alert {% if oauth_status.success %}alert-success{% else %}alert-warning{% endif %} align-items-center">
+        <div class="alert-icon">
+            <i class="fas {% if oauth_status.success %}fa-check-circle{% else %}fa-exclamation-triangle{% endif %}"></i>
+        </div>
+        <div id="statusMessage" class="alert-message">
+            <strong>{% if oauth_status.success %}Conexión OK:{% else %}Atención:{% endif %}</strong> 
+            {% if oauth_status.success %}
+                La conexión con la cuenta de correo está configurada correctamente.
+            {% else %}
+                {{ oauth_status.message }}
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Panel de configuración del servicio -->
+    <div class="row">
+        <div class="col-lg-8">
+            <!-- Tarjeta de Estado del Servicio -->
+            <div class="config-card">
+                <div class="config-card-header">
+                    <h3><i class="fas fa-cogs"></i> Estado del Servicio</h3>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="serviceActiveSwitch" {% if servicio and servicio.activo %}checked{% endif %} 
+                               {% if not oauth_status.success %}disabled{% endif %}>
+                        <label class="form-check-label" for="serviceActiveSwitch">
+                            {% if servicio and servicio.activo %}Servicio Activo{% else %}Servicio Inactivo{% endif %}
+                        </label>
+                    </div>
+                </div>
+                <div class="config-card-body">
+                    {% if not servicio %}
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i> No hay un servicio de ingesta configurado para este tenant. 
+                            Al iniciar el servicio se creará automáticamente.
+                        </div>
+                    {% else %}
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="status-item">
+                                    <div class="status-label">Estado:</div>
+                                    <div class="status-value" id="service-status">
+                                        {% if servicio.activo %}
+                                            <span class="text-success"><i class="fas fa-circle"></i> Activo</span>
+                                        {% else %}
+                                            <span class="text-secondary"><i class="fas fa-circle"></i> Inactivo</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                
+                                <div class="status-item">
+                                    <div class="status-label">Intervalo:</div>
+                                    <div class="status-value" id="service-interval">
+                                        <div class="input-group input-group-sm" style="max-width: 200px;">
+                                            <input type="number" class="form-control" id="intervaloMinutos" value="{{ servicio.intervalo_minutos }}" min="1" max="1440">
+                                            <span class="input-group-text">minutos</span>
+                                            <button class="btn btn-outline-secondary" type="button" id="saveIntervalBtn">
+                                                <i class="fas fa-save"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="status-item">
+                                    <div class="status-label">Próxima ejecución:</div>
+                                    <div class="status-value" id="next-execution">
+                                        {% if servicio.proxima_ejecucion %}
+                                            {{ servicio.proxima_ejecucion|date:"d/m/Y H:i:s" }}
+                                            <small class="text-muted ms-2" id="time-remaining">({{ tiempo_restante }})</small>
+                                        {% else %}
+                                            <span class="text-muted">No programado</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                
+                                <div class="status-item">
+                                    <div class="status-label">Estado de ejecución:</div>
+                                    <div class="status-value" id="execution-status">
+                                        {% if servicio.en_ejecucion %}
+                                            <span class="badge bg-primary">
+                                                <i class="fas fa-spinner fa-spin"></i> En ejecución
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">Inactivo</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="status-item">
+                                    <div class="status-label">Última ejecución:</div>
+                                    <div class="status-value" id="last-execution">
+                                        {% if servicio.ultima_ejecucion %}
+                                            {{ servicio.ultima_ejecucion|date:"d/m/Y H:i:s" }}
+                                        {% else %}
+                                            <span class="text-muted">Nunca</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                
+                                <div class="status-item">
+                                    <div class="status-label">Correos procesados:</div>
+                                    <div class="status-value" id="processed-emails">
+                                        <strong>{{ servicio.correos_procesados_total }}</strong> en total,
+                                        <strong>{{ servicio.correos_ultima_ejecucion }}</strong> en la última ejecución
+                                    </div>
+                                </div>
+                                
+                                <div class="status-item">
+                                    <div class="status-label">Cuenta conectada:</div>
+                                    <div class="status-value">
+                                        {% if oauth_status.status.email_address %}
+                                            <span class="text-success">{{ oauth_status.status.email_address }}</span>
+                                        {% else %}
+                                            <span class="text-danger">No configurada</span>
+                                            <a href="{% url 'configuracion' %}#correo" class="btn btn-sm btn-outline-primary ms-2">
+                                                <i class="fas fa-cog"></i> Configurar
+                                            </a>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                
+                                <div class="status-item">
+                                    <div class="status-label">Autenticación:</div>
+                                    <div class="status-value">
+                                        {% if oauth_status.status.oauth_authorized and oauth_status.status.oauth_token_valid %}
+                                            <span class="badge bg-success">
+                                                <i class="fas fa-check-circle"></i> Autorizada
+                                            </span>
+                                        {% elif oauth_status.status.oauth_authorized and not oauth_status.status.oauth_token_valid %}
+                                            <span class="badge bg-warning">
+                                                <i class="fas fa-exclamation-triangle"></i> Token expirado
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-danger">
+                                                <i class="fas fa-times-circle"></i> No autorizada
+                                            </span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Tarjeta de Historial de Ejecuciones -->
+            <div class="config-card">
+                <div class="config-card-header">
+                    <h3><i class="fas fa-history"></i> Historial de Ejecuciones</h3>
+                    <a href="{% url 'historial_ingesta' %}" class="btn btn-sm btn-outline-primary">
+                        <i class="fas fa-list"></i> Ver Todo
+                    </a>
+                </div>
+                <div class="config-card-body">
+                    {% if historial_ejecuciones %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Fecha</th>
+                                        <th>Estado</th>
+                                        <th>Correos</th>
+                                        <th>Glosas</th>
+                                        <th>Duración</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="historial-table">
+                                    {% for item in historial_ejecuciones %}
+                                    <tr>
+                                        <td>{{ item.fecha_inicio|date:"d/m/Y H:i:s" }}</td>
+                                        <td>
+                                            {% if item.estado == 'EXITOSO' %}
+                                                <span class="badge bg-success">Exitoso</span>
+                                            {% elif item.estado == 'ERROR' %}
+                                                <span class="badge bg-danger">Error</span>
+                                            {% elif item.estado == 'PARCIAL' %}
+                                                <span class="badge bg-warning">Parcial</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">{{ item.estado }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ item.correos_procesados }}</td>
+                                        <td>{{ item.glosas_extraidas }}</td>
+                                        <td>
+                                            {% if item.duracion_segundos %}
+                                                {{ item.duracion_segundos }} seg
+                                            {% elif item.fecha_fin %}
+                                                {{ item.fecha_inicio|timesince:item.fecha_fin }}
+                                            {% else %}
+                                                --
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <button class="btn btn-sm btn-outline-info ver-detalle" data-id="{{ item.id }}">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-secondary">
+                            <i class="fas fa-info-circle me-2"></i> Aún no hay ejecuciones registradas
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-4">
+            <!-- Tarjeta de Actividad Reciente -->
+            <div class="config-card">
+                <div class="config-card-header">
+                    <h3><i class="fas fa-bell"></i> Actividad Reciente</h3>
+                    <button class="btn btn-sm btn-outline-secondary" id="refreshActivityBtn">
+                        <i class="fas fa-sync-alt"></i> Actualizar
+                    </button>
+                </div>
+                <div class="config-card-body">
+                    {% if actividad_reciente %}
+                        <ul class="recent-activity-list" id="activity-list">
+                            {% for item in actividad_reciente %}
+                            <li class="recent-activity-item">
+                                <div class="recent-activity-title">
+                                    {% if 'INICIADA' in item.evento %}
+                                        <i class="fas fa-play text-primary"></i>
+                                    {% elif 'COMPLETADA' in item.evento %}
+                                        <i class="fas fa-check-circle text-success"></i>
+                                    {% elif 'ERROR' in item.evento %}
+                                        <i class="fas fa-exclamation-circle text-danger"></i>
+                                    {% elif 'DETENIDO' in item.evento %}
+                                        <i class="fas fa-stop-circle text-warning"></i>
+                                    {% elif 'INICIADO' in item.evento %}
+                                        <i class="fas fa-play-circle text-success"></i>
+                                    {% else %}
+                                        <i class="fas fa-info-circle text-secondary"></i>
+                                    {% endif %}
+                                    {{ item.get_evento_display }}
+                                </div>
+                                <div class="recent-activity-subtitle">{{ item.detalles }}</div>
+                                <div class="recent-activity-time">{{ item.fecha_hora|date:"d/m/Y H:i:s" }}</div>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <div class="alert alert-secondary">
+                            <i class="fas fa-info-circle me-2"></i> No hay actividad reciente
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Tarjeta de Asistente de Configuración -->
+            <div class="config-card">
+                <div class="config-card-header">
+                    <h3><i class="fas fa-magic"></i> Asistente</h3>
+                </div>
+                <div class="config-card-body">
+                    <div class="alert alert-primary">
+                        <h5><i class="fas fa-lightbulb me-2"></i> Consejos para la ingesta programada</h5>
+                        <ul class="mb-0">
+                            <li>Configure el intervalo según la frecuencia con que recibe correos importantes.</li>
+                            <li>Recomendamos entre 15 y 60 minutos para un balance óptimo.</li>
+                            <li>Cree <a href="{% url 'ingesta_correo_reglas' %}">reglas de filtrado</a> para procesar solo los correos relevantes.</li>
+                            <li>Verifique que la <a href="{% url 'configuracion' %}#correo">conexión OAuth</a> está activa y funcionando.</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <h5><i class="fas fa-info-circle me-2"></i> Información</h5>
+                        <p>El servicio de ingesta automáticamente extraerá glosas desde los documentos adjuntos en los correos que cumplan con las reglas de filtrado configuradas.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Detalles de Ejecución -->
+<div class="modal fade" id="detallesEjecucionModal" tabindex="-1" aria-labelledby="detallesEjecucionModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="detallesEjecucionModalLabel">Detalles de Ejecución</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Información General</h6>
+                        <table class="table table-sm">
+                            <tr>
+                                <th>Fecha de Inicio:</th>
+                                <td id="detalle-fecha-inicio">--</td>
+                            </tr>
+                            <tr>
+                                <th>Fecha de Fin:</th>
+                                <td id="detalle-fecha-fin">--</td>
+                            </tr>
+                            <tr>
+                                <th>Duración:</th>
+                                <td id="detalle-duracion">--</td>
+                            </tr>
+                            <tr>
+                                <th>Estado:</th>
+                                <td id="detalle-estado">--</td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Resultados</h6>
+                        <table class="table table-sm">
+                            <tr>
+                                <th>Correos Procesados:</th>
+                                <td id="detalle-correos-procesados">--</td>
+                            </tr>
+                            <tr>
+                                <th>Correos Nuevos:</th>
+                                <td id="detalle-correos-nuevos">--</td>
+                            </tr>
+                            <tr>
+                                <th>Archivos Procesados:</th>
+                                <td id="detalle-archivos-procesados">--</td>
+                            </tr>
+                            <tr>
+                                <th>Glosas Extraídas:</th>
+                                <td id="detalle-glosas-extraidas">--</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+                
+                <div id="detalle-error-container" class="alert alert-danger d-none">
+                    <h6>Error Detectado</h6>
+                    <p id="detalle-mensaje-error"></p>
+                </div>
+                
+                <div class="mt-3">
+                    <h6>Actividad Registrada</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm" id="detalle-logs-table">
+                            <thead>
+                                <tr>
+                                    <th>Fecha/Hora</th>
+                                    <th>Evento</th>
+                                    <th>Detalle</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td colspan="3" class="text-center">Cargando...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Referencias a elementos DOM
+        const toggleServicioBtn = document.getElementById('btnToggleServicio');
+        const ejecutarAhoraBtn = document.getElementById('btnEjecutarAhora');
+        const saveIntervalBtn = document.getElementById('saveIntervalBtn');
+        const serviceActiveSwitch = document.getElementById('serviceActiveSwitch');
+        const refreshActivityBtn = document.getElementById('refreshActivityBtn');
+        const timeRemainingEl = document.getElementById('time-remaining');
+        const statusAlertEl = document.getElementById('statusAlert');
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        
+        // Modal de detalles
+        const detallesModal = new bootstrap.Modal(document.getElementById('detallesEjecucionModal'));
+        
+        // Temporizador para actualizar tiempo restante
+        let updateTimer;
+        
+        // Función para actualizar estado cada minuto
+        function startUpdateTimer() {
+            // Actualizar tiempo restante cada 30 segundos
+            updateTimer = setInterval(fetchServiceStatus, 30000);
+        }
+        
+        // Iniciar temporizador
+        startUpdateTimer();
+        
+        // Event Listeners
+        if (toggleServicioBtn) {
+            toggleServicioBtn.addEventListener('click', toggleServicio);
+        }
+        
+        if (ejecutarAhoraBtn) {
+            ejecutarAhoraBtn.addEventListener('click', ejecutarAhora);
+        }
+        
+        if (saveIntervalBtn) {
+            saveIntervalBtn.addEventListener('click', updateInterval);
+        }
+        
+        if (serviceActiveSwitch) {
+            serviceActiveSwitch.addEventListener('change', function() {
+                toggleServicio();
+            });
+        }
+        
+        if (refreshActivityBtn) {
+            refreshActivityBtn.addEventListener('click', function() {
+                fetchServiceStatus();
+                animateRefreshIcon(this);
+            });
+        }
+        
+        // Listener para botones de ver detalle
+        document.querySelectorAll('.ver-detalle').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const ejecucionId = this.dataset.id;
+                fetchEjecucionDetalle(ejecucionId);
+            });
+        });
+        
+        // Función para mostrar mensaje de estado
+        function showStatusAlert(type, message) {
+            if (!statusAlertEl) return;
+            
+            // Actualizar clase y mensaje
+            statusAlertEl.className = `config-alert alert alert-${type} show`;
+            
+            const iconEl = statusAlertEl.querySelector('.alert-icon i');
+            if (iconEl) {
+                iconEl.className = `fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-triangle'}`;
+            }
+            
+            const messageEl = statusAlertEl.querySelector('.alert-message');
+            if (messageEl) {
+                const prefix = type === 'success' ? 'Éxito:' : type === 'warning' ? 'Atención:' : 'Error:';
+                messageEl.innerHTML = `<strong>${prefix}</strong> ${message}`;
+            }
+            
+            // Ocultar automáticamente después de 5 segundos
+            setTimeout(() => {
+                statusAlertEl.classList.remove('show');
+            }, 5000);
+        }
+        
+        // Función para actualizar UI desde respuesta API
+        function updateUIFromStatus(data) {
+            // Actualizar estado del servicio
+            const serviceStatusEl = document.getElementById('service-status');
+            if (serviceStatusEl) {
+                serviceStatusEl.innerHTML = data.servicio.activo ? 
+                    '<span class="text-success"><i class="fas fa-circle"></i> Activo</span>' : 
+                    '<span class="text-secondary"><i class="fas fa-circle"></i> Inactivo</span>';
+            }
+            
+            // Actualizar botón de toggle
+            if (toggleServicioBtn) {
+                if (data.servicio.activo) {
+                    toggleServicioBtn.innerHTML = '<i class="fas fa-stop-circle"></i> Detener Servicio';
+                    toggleServicioBtn.classList.remove('btn-action');
+                    toggleServicioBtn.classList.add('btn-action');
+                    toggleServicioBtn.style.backgroundColor = '#ef4444';
+                } else {
+                    toggleServicioBtn.innerHTML = '<i class="fas fa-play-circle"></i> Iniciar Servicio';
+                    toggleServicioBtn.classList.remove('btn-action');
+                    toggleServicioBtn.classList.add('btn-action');
+                    toggleServicioBtn.style.backgroundColor = '';
+                }
+            }
+            
+            // Actualizar switch de servicio activo
+            if (serviceActiveSwitch) {
+                serviceActiveSwitch.checked = data.servicio.activo;
+            }
+            
+            // Actualizar botón ejecutar ahora
+            if (ejecutarAhoraBtn) {
+                ejecutarAhoraBtn.style.display = data.servicio.activo ? '' : 'none';
+            }
+            
+            // Actualizar estado de ejecución
+            const executionStatusEl = document.getElementById('execution-status');
+            if (executionStatusEl) {
+                executionStatusEl.innerHTML = data.servicio.en_ejecucion ?
+                    '<span class="badge bg-primary"><i class="fas fa-spinner fa-spin"></i> En ejecución</span>' :
+                    '<span class="badge bg-secondary">Inactivo</span>';
+            }
+            
+            // Actualizar próxima ejecución y tiempo restante
+            const nextExecutionEl = document.getElementById('next-execution');
+            if (nextExecutionEl && data.servicio.proxima_ejecucion) {
+                const fecha = new Date(data.servicio.proxima_ejecucion);
+                nextExecutionEl.innerHTML = `${fecha.toLocaleString()} <small class="text-muted ms-2" id="time-remaining">(${data.servicio.tiempo_restante})</small>`;
+            }
+            
+            // Actualizar última ejecución
+            const lastExecutionEl = document.getElementById('last-execution');
+            if (lastExecutionEl) {
+                if (data.servicio.ultima_ejecucion) {
+                    const fecha = new Date(data.servicio.ultima_ejecucion);
+                    lastExecutionEl.textContent = fecha.toLocaleString();
+                } else {
+                    lastExecutionEl.innerHTML = '<span class="text-muted">Nunca</span>';
+                }
+            }
+            
+            // Actualizar contadores
+            const processedEmailsEl = document.getElementById('processed-emails');
+            if (processedEmailsEl) {
+                processedEmailsEl.innerHTML = `<strong>${data.servicio.correos_procesados_total}</strong> en total, 
+                                            <strong>${data.servicio.correos_ultima_ejecucion}</strong> en la última ejecución`;
+            }
+            
+            // Actualizar historial
+            updateHistorialTable(data.historial);
+        }
+        
+        // Función para actualizar tabla de historial
+        function updateHistorialTable(historial) {
+            const historialTableEl = document.getElementById('historial-table');
+            if (!historialTableEl || !historial || historial.length === 0) return;
+            
+            // Limpiar tabla existente
+            historialTableEl.innerHTML = '';
+            
+            // Generar nuevas filas
+            historial.forEach(item => {
+                const fechaInicio = new Date(item.fecha_inicio);
+                
+                // Determinar badge según estado
+                let badgeHtml = '';
+                if (item.estado === 'EXITOSO') {
+                    badgeHtml = '<span class="badge bg-success">Exitoso</span>';
+                } else if (item.estado === 'ERROR') {
+                    badgeHtml = '<span class="badge bg-danger">Error</span>';
+                } else if (item.estado === 'PARCIAL') {
+                    badgeHtml = '<span class="badge bg-warning">Parcial</span>';
+                } else {
+                    badgeHtml = `<span class="badge bg-secondary">${item.estado}</span>`;
+                }
+                
+                // Calcular duración
+                let duracionHtml = '--';
+                if (item.duracion_segundos) {
+                    duracionHtml = `${item.duracion_segundos} seg`;
+                } else if (item.fecha_fin) {
+                    // Calcular diferencia en segundos
+                    const fechaFin = new Date(item.fecha_fin);
+                    const diff = Math.round((fechaFin - fechaInicio) / 1000);
+                    duracionHtml = `${diff} seg`;
+                }
+                
+                // Crear fila
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${fechaInicio.toLocaleString()}</td>
+                    <td>${badgeHtml}</td>
+                    <td>${item.correos_procesados}</td>
+                    <td>${item.glosas_extraidas || 0}</td>
+                    <td>${duracionHtml}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-info ver-detalle" data-id="${item.id}">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </td>
+                `;
+                
+                // Añadir listener al botón de ver detalle
+                const detalleBtn = tr.querySelector('.ver-detalle');
+                detalleBtn.addEventListener('click', function() {
+                    fetchEjecucionDetalle(item.id);
+                });
+                
+                historialTableEl.appendChild(tr);
+            });
+        }
+        
+        // Función para obtener detalles de una ejecución
+        function fetchEjecucionDetalle(ejecucionId) {
+            fetch(`/ingesta-correo/api/historial/${ejecucionId}/`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Mostrar información en el modal
+                        updateDetalleModal(data.historial, data.logs);
+                        // Mostrar modal
+                        detallesModal.show();
+                    } else {
+                        showStatusAlert('danger', data.message || 'Error al obtener detalles');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showStatusAlert('danger', 'Error de conexión al servidor');
+                });
+        }
+        
+        // Función para actualizar el modal con los detalles
+        function updateDetalleModal(historial, logs) {
+            // Información general
+            document.getElementById('detalle-fecha-inicio').textContent = 
+                historial.fecha_inicio ? new Date(historial.fecha_inicio).toLocaleString() : '--';
+            
+            document.getElementById('detalle-fecha-fin').textContent = 
+                historial.fecha_fin ? new Date(historial.fecha_fin).toLocaleString() : '--';
+            
+            document.getElementById('detalle-duracion').textContent = 
+                historial.duracion_segundos ? `${historial.duracion_segundos} segundos` : '--';
+            
+            // Estado
+            const estadoEl = document.getElementById('detalle-estado');
+            if (estadoEl) {
+                if (historial.estado === 'EXITOSO') {
+                    estadoEl.innerHTML = '<span class="badge bg-success">Exitoso</span>';
+                } else if (historial.estado === 'ERROR') {
+                    estadoEl.innerHTML = '<span class="badge bg-danger">Error</span>';
+                } else if (historial.estado === 'PARCIAL') {
+                    estadoEl.innerHTML = '<span class="badge bg-warning">Parcial</span>';
+                } else {
+                    estadoEl.innerHTML = `<span class="badge bg-secondary">${historial.estado}</span>`;
+                }
+            }
+            
+            // Resultados
+            document.getElementById('detalle-correos-procesados').textContent = historial.correos_procesados || 0;
+            document.getElementById('detalle-correos-nuevos').textContent = historial.correos_nuevos || 0;
+            document.getElementById('detalle-archivos-procesados').textContent = historial.archivos_procesados || 0;
+            document.getElementById('detalle-glosas-extraidas').textContent = historial.glosas_extraidas || 0;
+            
+            // Mensaje de error
+            const errorContainer = document.getElementById('detalle-error-container');
+            const mensajeError = document.getElementById('detalle-mensaje-error');
+            
+            if (historial.mensaje_error) {
+                errorContainer.classList.remove('d-none');
+                mensajeError.textContent = historial.mensaje_error;
+            } else {
+                errorContainer.classList.add('d-none');
+                mensajeError.textContent = '';
+            }
+            
+            // Actualizar tabla de logs
+            const logsTable = document.getElementById('detalle-logs-table').querySelector('tbody');
+            logsTable.innerHTML = '';
+            
+            if (logs && logs.length > 0) {
+                logs.forEach(log => {
+                    const fecha = new Date(log.fecha_hora);
+                    
+                    // Determinar icono según evento
+                    let iconHtml = '';
+                    if (log.evento.includes('INICIADA')) {
+                        iconHtml = '<i class="fas fa-play text-primary"></i>';
+                    } else if (log.evento.includes('COMPLETADA')) {
+                        iconHtml = '<i class="fas fa-check-circle text-success"></i>';
+                    } else if (log.evento.includes('ERROR')) {
+                        iconHtml = '<i class="fas fa-exclamation-circle text-danger"></i>';
+                    } else {
+                        iconHtml = '<i class="fas fa-info-circle text-secondary"></i>';
+                    }
+                    
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${fecha.toLocaleString()}</td>
+                        <td>${iconHtml} ${log.evento}</td>
+                        <td>${log.detalles}</td>
+                    `;
+                    logsTable.appendChild(tr);
+                });
+            } else {
+                logsTable.innerHTML = '<tr><td colspan="3" class="text-center">No hay registros disponibles</td></tr>';
+            }
+        }
+        
+        // Función para activar/desactivar el servicio
+        function toggleServicio() {
+            // Cambiar estado visual del botón
+            if (toggleServicioBtn) {
+                toggleServicioBtn.disabled = true;
+                const originalText = toggleServicioBtn.innerHTML;
+                toggleServicioBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Procesando...';
+            }
+            
+            // Obtener el estado actual del switch
+            const nuevoEstado = serviceActiveSwitch ? serviceActiveSwitch.checked : null;
+            
+            // Enviar solicitud al servidor
+            fetch('/ingesta-correo/api/servicio/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': csrfToken
+                },
+                body: `action=toggle_service`
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showStatusAlert('success', data.message);
+                    
+                    // Actualizar el estado del servicio
+                    if (serviceActiveSwitch) {
+                        serviceActiveSwitch.checked = data.servicio.activo;
+                    }
+                    
+                    // Refrescar UI completa
+                    fetchServiceStatus();
+                } else {
+                    showStatusAlert('danger', data.message);
+                    
+                    // Restaurar estado original del switch
+                    if (serviceActiveSwitch && nuevoEstado !== null) {
+                        serviceActiveSwitch.checked = !nuevoEstado;
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showStatusAlert('danger', 'Error de conexión al servidor');
+                
+                // Restaurar estado original del switch
+                if (serviceActiveSwitch && nuevoEstado !== null) {
+                    serviceActiveSwitch.checked = !nuevoEstado;
+                }
+            })
+            .finally(() => {
+                // Restaurar botón
+                if (toggleServicioBtn) {
+                    toggleServicioBtn.disabled = false;
+                    toggleServicioBtn.innerHTML = toggleServicioBtn.innerHTML.includes('Detener') ? 
+                        '<i class="fas fa-stop-circle"></i> Detener Servicio' : 
+                        '<i class="fas fa-play-circle"></i> Iniciar Servicio';
+                }
+            });
+        }
+        
+        // Función para ejecutar ahora
+        function ejecutarAhora() {
+            // Cambiar estado visual del botón
+            if (ejecutarAhoraBtn) {
+                ejecutarAhoraBtn.disabled = true;
+                const originalText = ejecutarAhoraBtn.innerHTML;
+                ejecutarAhoraBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Ejecutando...';
+            }
+            
+            // Enviar solicitud al servidor
+            fetch('/ingesta-correo/api/servicio/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': csrfToken
+                },
+                body: `action=execute_now`
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showStatusAlert('success', data.message);
+                    
+                    // Refrescar UI completa después de un momento
+                    setTimeout(fetchServiceStatus, 1000);
+                } else {
+                    showStatusAlert('danger', data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showStatusAlert('danger', 'Error de conexión al servidor');
+            })
+            .finally(() => {
+                // Restaurar botón
+                if (ejecutarAhoraBtn) {
+                    ejecutarAhoraBtn.disabled = false;
+                    ejecutarAhoraBtn.innerHTML = '<i class="fas fa-play"></i> Verificar Ahora';
+                }
+            });
+        }
+        
+        // Función para actualizar intervalo
+        function updateInterval() {
+            // Obtener valor del intervalo
+            const intervaloInput = document.getElementById('intervaloMinutos');
+            if (!intervaloInput) return;
+            
+            const intervalo = intervaloInput.value;
+            if (!intervalo || intervalo < 1) {
+                showStatusAlert('warning', 'El intervalo debe ser mayor a 0 minutos');
+                return;
+            }
+            
+            // Cambiar estado visual del botón
+            saveIntervalBtn.disabled = true;
+            const originalText = saveIntervalBtn.innerHTML;
+            saveIntervalBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            
+            // Enviar solicitud al servidor
+            fetch('/ingesta-correo/api/servicio/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': csrfToken
+                },
+                body: `action=update_interval&interval=${intervalo}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showStatusAlert('success', data.message);
+                    
+                    // Refrescar UI completa
+                    fetchServiceStatus();
+                } else {
+                    showStatusAlert('danger', data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showStatusAlert('danger', 'Error de conexión al servidor');
+            })
+            .finally(() => {
+                // Restaurar botón
+                saveIntervalBtn.disabled = false;
+                saveIntervalBtn.innerHTML = originalText;
+            });
+        }
+        
+        // Función para obtener estado del servicio
+        function fetchServiceStatus() {
+            fetch('/ingesta-correo/api/servicio/')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        updateUIFromStatus(data);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error al obtener estado:', error);
+                });
+        }
+        
+        // Función para animar icono de refrescar
+        function animateRefreshIcon(button) {
+            const originalHTML = button.innerHTML;
+            button.disabled = true;
+            button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            
+            setTimeout(() => {
+                button.disabled = false;
+                button.innerHTML = originalHTML;
+            }, 1000);
+        }
+    });
+</script>
+{% endblock %}

@@ -1,4 +1,6 @@
-from django.urls import path
+# apps/ingesta_correo/urls.py - Actualizado para incluir rutas de ingesta programada
+
+from django.urls import path, include
 from .views import DashboardIngestaView, ApiDashboardIngestaView, ToggleServicioView, CorreosListView, VerifyConnectionView
 from .views_reglas import ReglasFiltradoView, ReglaFiltradoApiView, ReglaEstadoView, ReglasReordenarView
 from .views_reglas_test import TestReglaView, TestReglaExistenteView
@@ -8,6 +10,9 @@ urlpatterns = [
     path('', DashboardIngestaView.as_view(), name='ingesta_correo_dashboard'),
     path('correos/', CorreosListView.as_view(), name='ingesta_correo_correos'),
     path('reglas/', ReglasFiltradoView.as_view(), name='ingesta_correo_reglas'),
+    
+    # Incluir URLs de ingesta programada
+    path('', include('apps.ingesta_correo.urls_ingesta')),
     
     # API endpoints
     path('api/dashboard/', ApiDashboardIngestaView.as_view(), name='api_ingesta_dashboard'),

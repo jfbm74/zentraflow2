@@ -1,3 +1,4 @@
+import logging
 from django.shortcuts import render, redirect, get_object_or_404
 from django.views.generic import TemplateView, View
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -5,11 +6,14 @@ from django.http import JsonResponse
 from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_protect
-from .models import ServicioIngesta, ReglaFiltrado, CorreoIngesta, ArchivoAdjunto, LogActividad
-from .services.dashboard_service import DashboardService
+from django.db import transaction
+
+from apps.ingesta_correo.services.dashboard_service import DashboardService
+
+from .models import ServicioIngesta, HistorialEjecucion, LogActividad, CorreoIngesta
+from .services.ingesta_scheduler_service import IngestaSchedulerService
 from apps.configuracion.services.oauth_verification_service import OAuthVerificationService
-
-
+from .tasks import execute_ingestion_now
 
 class DashboardIngestaView(LoginRequiredMixin, TemplateView):
     """Vista principal del dashboard de ingesta de correo."""
@@ -87,6 +91,14 @@ class ToggleServicioView(LoginRequiredMixin, View):
             servicio.activo = new_state
             servicio.modificado_por = request.user
             servicio.save()
+
+            # Devolver respuesta exitosa
+            return JsonResponse({
+                'success': True,
+                'message': f"Servicio {'activado' if new_state else 'desactivado'} correctamente",
+                'active': new_state
+            })
+            
         except Exception as e:
             return JsonResponse({
                 'success': False,
@@ -181,4 +193,61 @@ class VerifyConnectionView(LoginRequiredMixin, View):
                     'read_permissions': False,
                     'email_address': None
                 }
+            }, status=500)
+
+logger = logging.getLogger(__name__)
+
+class ApiHistorialDetalleView(LoginRequiredMixin, View):
+    """API para obtener detalles de una ejecución específica."""
+    
+    def get(self, request, historial_id):
+        """Obtener detalles de una ejecución de ingesta."""
+        tenant = request.user.tenant
+        
+        try:
+            # Obtener el historial solicitado
+            historial = get_object_or_404(HistorialEjecucion, id=historial_id, tenant=tenant)
+            
+            # Preparar datos detallados
+            detalles = historial.detalles or {}
+            
+            # Obtener logs relacionados con esta ejecución
+            logs = LogActividad.objects.filter(
+                tenant=tenant,
+                fecha_hora__range=(historial.fecha_inicio, historial.fecha_fin or timezone.now())
+            ).order_by('fecha_hora')
+            
+            logs_data = []
+            for log in logs:
+                logs_data.append({
+                    'fecha_hora': log.fecha_hora.isoformat(),
+                    'evento': log.evento,
+                    'detalles': log.detalles,
+                    'estado': log.estado
+                })
+            
+            # Retornar datos completos
+            return JsonResponse({
+                'success': True,
+                'historial': {
+                    'id': historial.id,
+                    'fecha_inicio': historial.fecha_inicio.isoformat() if historial.fecha_inicio else None,
+                    'fecha_fin': historial.fecha_fin.isoformat() if historial.fecha_fin else None,
+                    'duracion_segundos': historial.duracion_segundos,
+                    'estado': historial.estado,
+                    'correos_procesados': historial.correos_procesados,
+                    'correos_nuevos': historial.correos_nuevos,
+                    'archivos_procesados': historial.archivos_procesados,
+                    'glosas_extraidas': historial.glosas_extraidas,
+                    'mensaje_error': historial.mensaje_error,
+                    'detalles': detalles
+                },
+                'logs': logs_data
+            })
+        
+        except Exception as e:
+            logger.error(f"Error al obtener detalles del historial {historial_id}: {str(e)}")
+            return JsonResponse({
+                'success': False,
+                'message': f"Error al obtener detalles: {str(e)}"
             }, status=500)

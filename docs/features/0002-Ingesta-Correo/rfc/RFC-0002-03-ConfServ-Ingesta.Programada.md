@@ -1,7 +1,5 @@
-RFCs para la Ingesta de Correo (divididos y ordenados de forma lógica)
 ======================================================================
-
-RFC 11.1: Configuración del Servicio de Ingesta Programada
+RFC-0002-03: Configuración del Servicio de Ingesta Programada
 ----------------------------------------------------------
 
 ### Descripción
