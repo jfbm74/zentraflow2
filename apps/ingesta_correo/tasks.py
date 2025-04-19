@@ -111,7 +111,7 @@ def process_email_ingestion(servicio_id):
                 'token_uri': 'https://oauth2.googleapis.com/token',
                 'client_id': credentials.client_id,
                 'client_secret': credentials.client_secret,
-                'scopes': ['https://www.googleapis.com/auth/gmail.readonly']
+                'scopes': ['https://www.googleapis.com/auth/gmail.readonly', 'https://www.googleapis.com/auth/gmail.modify']
             }
             
             creds = Credentials.from_authorized_user_info(token_data)
