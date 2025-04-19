@@ -68,19 +68,24 @@ class ReglaTestService:
             cumple = False
             
             if condicion == 'CONTIENE':
-                cumple = valor.lower() in valor_campo.lower()
+                # Buscar la cadena exacta, respetando mayúsculas/minúsculas
+                cumple = valor in valor_campo
             elif condicion == 'NO_CONTIENE':
-                cumple = valor.lower() not in valor_campo.lower()
+                # Verificar que la cadena exacta no está presente
+                cumple = valor not in valor_campo
             elif condicion == 'ES_IGUAL':
-                cumple = valor.lower() == valor_campo.lower()
+                # Comparación exacta
+                cumple = valor == valor_campo
             elif condicion == 'EMPIEZA_CON':
-                cumple = valor_campo.lower().startswith(valor.lower())
+                # Verificar inicio exacto
+                cumple = valor_campo.startswith(valor)
             elif condicion == 'TERMINA_CON':
-                cumple = valor_campo.lower().endswith(valor.lower())
+                # Verificar final exacto
+                cumple = valor_campo.endswith(valor)
             elif condicion == 'COINCIDE_REGEX':
-                # Intentar aplicar la expresión regular
+                # Aplicar expresión regular sin ignorar mayúsculas/minúsculas
                 try:
-                    regex = re.compile(valor, re.IGNORECASE)
+                    regex = re.compile(valor)
                     cumple = bool(regex.search(valor_campo))
                 except re.error as e:
                     return {
@@ -103,12 +108,12 @@ class ReglaTestService:
             }.get(campo, campo)
             
             condicion_display = {
-                'CONTIENE': 'contiene',
-                'NO_CONTIENE': 'no contiene',
-                'ES_IGUAL': 'es igual a',
-                'EMPIEZA_CON': 'empieza con',
-                'TERMINA_CON': 'termina con',
-                'COINCIDE_REGEX': 'coincide con la expresión'
+                'CONTIENE': 'contiene exactamente',
+                'NO_CONTIENE': 'no contiene exactamente',
+                'ES_IGUAL': 'es exactamente igual a',
+                'EMPIEZA_CON': 'empieza exactamente con',
+                'TERMINA_CON': 'termina exactamente con',
+                'COINCIDE_REGEX': 'coincide exactamente con la expresión'
             }.get(condicion, condicion)
             
             mensaje = f'El {campo_display} "{valor_campo}" {condicion_display} "{valor}".'
@@ -128,40 +133,18 @@ class ReglaTestService:
     @staticmethod
     def evaluar_regla_completa(regla, datos_prueba):
         """
-        Evalúa un objeto Regla completo contra datos de prueba.
+        Evalúa una regla completa contra datos de prueba.
         
         Args:
-            regla: Objeto ReglaFiltrado
+            regla: Objeto ReglaFiltrado a evaluar
             datos_prueba: Diccionario con datos de prueba
             
         Returns:
             dict: Resultado de la evaluación
         """
-        try:
-            if not regla.activa:
-                return {
-                    'cumple': False,
-                    'mensaje': 'La regla está inactiva.',
-                    'accion': None
-                }
-            
-            # Evaluar la regla
-            resultado = ReglaTestService.evaluar_regla(
-                regla.campo,
-                regla.condicion,
-                regla.valor,
-                datos_prueba
-            )
-            
-            # Añadir la acción al resultado
-            resultado['accion'] = regla.accion if resultado['cumple'] else None
-            
-            return resultado
-            
-        except Exception as e:
-            logger.error(f"Error al evaluar regla completa: {str(e)}")
-            return {
-                'cumple': False,
-                'mensaje': f'Error al evaluar la regla: {str(e)}',
-                'accion': None
-            }
+        return ReglaTestService.evaluar_regla(
+            regla.campo,
+            regla.condicion,
+            regla.valor,
+            datos_prueba
+        )

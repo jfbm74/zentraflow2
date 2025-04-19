@@ -9,6 +9,7 @@ from django.db import transaction
 from django.utils import timezone
 from django.forms import ValidationError
 from apps.ingesta_correo.models import ReglaFiltrado, ServicioIngesta, LogActividad
+from apps.ingesta_correo.services.regla_test_service import ReglaTestService
 
 logger = logging.getLogger(__name__)
 
@@ -365,3 +366,44 @@ class ReglaFiltradoService:
         except Exception as e:
             logger.error(f"Error al reordenar reglas: {str(e)}")
             raise ValidationError(f"Error al reordenar las reglas: {str(e)}")
+    
+    @staticmethod
+    def aplicar_reglas(correo):
+        """
+        Aplica las reglas de filtrado a un correo.
+        
+        Args:
+            correo: Objeto CorreoIngesta a evaluar
+            
+        Returns:
+            ReglaFiltrado: La primera regla que coincide con el correo, o None si ninguna coincide
+        """
+        try:
+            # Obtener reglas activas ordenadas por prioridad
+            reglas = ReglaFiltrado.objects.filter(
+                servicio=correo.servicio,
+                activa=True
+            ).order_by('prioridad')
+            
+            # Preparar datos para evaluación
+            datos_correo = {
+                'asunto': correo.asunto or '',
+                'remitente': correo.remitente or '',
+                'destinatario': correo.destinatarios or '',
+                'contenido': correo.contenido_plano or '',
+                'adjunto': ', '.join([adj.nombre_archivo for adj in correo.adjuntos.all()]) if correo.adjuntos.exists() else ''
+            }
+            
+            # Evaluar cada regla en orden
+            for regla in reglas:
+                resultado = ReglaTestService.evaluar_regla_completa(regla, datos_correo)
+                
+                if resultado['cumple']:
+                    logger.info(f"Regla '{regla.nombre}' coincide con correo {correo.id}: {resultado['mensaje']}")
+                    return regla
+            
+            return None
+            
+        except Exception as e:
+            logger.error(f"Error al aplicar reglas a correo {correo.id}: {str(e)}")
+            return None

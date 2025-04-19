@@ -6,7 +6,8 @@ from .models import (
     CorreoIngesta, 
     ArchivoAdjunto, 
     EstadisticaDiaria, 
-    LogActividad
+    LogActividad,
+    HistorialEjecucion
 )
 
 @admin.register(ServicioIngesta)
@@ -59,3 +60,14 @@ class LogActividadAdmin(admin.ModelAdmin):
     search_fields = ('detalles', 'tenant__name')
     ordering = ('-fecha_hora',)
     date_hierarchy = 'fecha_hora'
+
+@admin.register(HistorialEjecucion)
+class HistorialEjecucionAdmin(admin.ModelAdmin):
+    """Configuración admin para el modelo HistorialEjecucion."""
+    list_display = ('servicio', 'tenant', 'fecha_inicio', 'fecha_fin', 'duracion_segundos', 'estado', 
+                   'correos_procesados', 'glosas_extraidas')
+    list_filter = ('estado', 'fecha_inicio')
+    search_fields = ('servicio__tenant__name', 'mensaje_error')
+    ordering = ('-fecha_inicio',)
+    date_hierarchy = 'fecha_inicio'
+    readonly_fields = ('fecha_inicio', 'fecha_fin', 'duracion_segundos')

@@ -1,4 +1,6 @@
 # apps/ingesta_correo/models.py
+from django.utils import timezone
+from datetime import timedelta
 from django.db import models
 from apps.tenants.models import Tenant
 from apps.authentication.models import ZentraflowUser
@@ -7,7 +9,24 @@ class ServicioIngesta(models.Model):
     """Configuración principal del servicio de ingesta de correo."""
     tenant = models.OneToOneField('tenants.Tenant', on_delete=models.CASCADE, related_name='servicio_ingesta')
     activo = models.BooleanField(default=True, verbose_name="Activo")
+    
+    # Nuevos campos para la programación
+    intervalo_minutos = models.PositiveIntegerField(default=15, verbose_name="Intervalo (minutos)",
+                                               help_text="Intervalo de tiempo entre verificaciones")
+    proxima_ejecucion = models.DateTimeField(null=True, blank=True, verbose_name="Próxima ejecución programada")
+    ultima_ejecucion = models.DateTimeField(null=True, blank=True, verbose_name="Última ejecución")
     ultima_verificacion = models.DateTimeField(null=True, blank=True, verbose_name="Última verificación")
+    
+    # Control de ejecución
+    en_ejecucion = models.BooleanField(default=False, verbose_name="En ejecución", 
+                                    help_text="Indica si el servicio está actualmente ejecutándose")
+    tareas_pendientes = models.PositiveIntegerField(default=0, verbose_name="Tareas pendientes")
+    
+    # Métricas
+    correos_procesados_total = models.PositiveIntegerField(default=0, verbose_name="Total de correos procesados")
+    correos_ultima_ejecucion = models.PositiveIntegerField(default=0, verbose_name="Correos en última ejecución")
+    
+    # Control de cambios
     creado_en = models.DateTimeField(auto_now_add=True, verbose_name="Creado en")
     modificado_en = models.DateTimeField(auto_now=True, verbose_name="Modificado en")
     modificado_por = models.ForeignKey('authentication.ZentraflowUser', on_delete=models.SET_NULL, 
@@ -20,7 +39,67 @@ class ServicioIngesta(models.Model):
 
     def __str__(self):
         return f"Servicio de Ingesta para {self.tenant.name}"
-
+    
+    def actualizar_proxima_ejecucion(self):
+        """Calcula y actualiza la próxima ejecución programada basada en el intervalo."""
+        now = timezone.now()
+        
+        # Si no hay próxima ejecución programada, o ya ha pasado, programar desde ahora
+        if not self.proxima_ejecucion or self.proxima_ejecucion <= now:
+            self.proxima_ejecucion = now + timedelta(minutes=self.intervalo_minutos)
+        
+        self.save(update_fields=['proxima_ejecucion'])
+        return self.proxima_ejecucion
+    
+    def tiempo_hasta_proxima_ejecucion(self):
+        """Retorna el tiempo restante hasta la próxima ejecución en formato legible."""
+        if not self.proxima_ejecucion:
+            return "No programado"
+            
+        now = timezone.now()
+        if self.proxima_ejecucion <= now:
+            return "Pendiente"
+            
+        delta = self.proxima_ejecucion - now
+        minutes, seconds = divmod(delta.seconds, 60)
+        hours, minutes = divmod(minutes, 60)
+        
+        if delta.days > 0:
+            return f"{delta.days}d {hours}h {minutes}m"
+        elif hours > 0:
+            return f"{hours}h {minutes}m"
+        else:
+            return f"{minutes}m {seconds}s"
+    
+    def registrar_ejecucion(self, correos_procesados=0):
+        """Registra que se ha completado una ejecución del servicio."""
+        self.ultima_ejecucion = timezone.now()
+        self.correos_ultima_ejecucion = correos_procesados
+        self.correos_procesados_total += correos_procesados
+        
+        # Asegurar que el estado de ejecución se limpie
+        self.en_ejecucion = False
+        
+        # Solo actualizar próxima ejecución si el servicio sigue activo
+        if self.activo:
+            self.actualizar_proxima_ejecucion()
+        else:
+            self.proxima_ejecucion = None
+            
+        self.save(update_fields=[
+            'ultima_ejecucion', 'correos_ultima_ejecucion', 
+            'correos_procesados_total', 'en_ejecucion', 'proxima_ejecucion'
+        ])
+    
+    def iniciar_ejecucion(self):
+        """Marca el servicio como en ejecución."""
+        # Solo iniciar si no está ya en ejecución
+        if not self.en_ejecucion:
+            self.en_ejecucion = True
+            self.ultima_verificacion = timezone.now()
+            self.save(update_fields=['en_ejecucion', 'ultima_verificacion'])
+            return True
+        return False
 
 class ReglaFiltrado(models.Model):
     """Reglas para filtrar correos entrantes."""
@@ -204,3 +283,47 @@ class LogActividad(models.Model):
 
     def __str__(self):
         return f"{self.fecha_hora} - {self.get_evento_display()}"
+
+class HistorialEjecucion(models.Model):
+    """Registro histórico de ejecuciones del servicio de ingesta."""
+    
+    class EstadoEjecucion(models.TextChoices):
+        EXITOSO = 'EXITOSO', 'Exitoso'
+        ERROR = 'ERROR', 'Error'
+        PARCIAL = 'PARCIAL', 'Parcialmente exitoso'
+        CANCELADO = 'CANCELADO', 'Cancelado'
+    
+    servicio = models.ForeignKey(ServicioIngesta, on_delete=models.CASCADE, related_name='historial')
+    tenant = models.ForeignKey('tenants.Tenant', on_delete=models.CASCADE, related_name='historial_ingesta')
+    
+    fecha_inicio = models.DateTimeField(verbose_name="Fecha de inicio")
+    fecha_fin = models.DateTimeField(null=True, blank=True, verbose_name="Fecha de finalización")
+    duracion_segundos = models.PositiveIntegerField(default=0, verbose_name="Duración (segundos)")
+    
+    estado = models.CharField(max_length=20, choices=EstadoEjecucion.choices, 
+                             default=EstadoEjecucion.EXITOSO, verbose_name="Estado")
+    
+    correos_procesados = models.PositiveIntegerField(default=0, verbose_name="Correos procesados")
+    correos_nuevos = models.PositiveIntegerField(default=0, verbose_name="Correos nuevos")
+    archivos_procesados = models.PositiveIntegerField(default=0, verbose_name="Archivos procesados")
+    glosas_extraidas = models.PositiveIntegerField(default=0, verbose_name="Glosas extraídas")
+    
+    mensaje_error = models.TextField(null=True, blank=True, verbose_name="Mensaje de error")
+    detalles = models.JSONField(null=True, blank=True, verbose_name="Detalles")
+    
+    class Meta:
+        app_label = 'ingesta_correo'
+        verbose_name = "Historial de Ejecución"
+        verbose_name_plural = "Historial de Ejecuciones"
+        ordering = ['-fecha_inicio']
+    
+    def __str__(self):
+        return f"Ejecución {self.fecha_inicio} - {self.estado}"
+    
+    def calcular_duracion(self):
+        """Calcula la duración de la ejecución."""
+        if self.fecha_inicio and self.fecha_fin:
+            delta = self.fecha_fin - self.fecha_inicio
+            self.duracion_segundos = delta.total_seconds()
+            self.save(update_fields=['duracion_segundos'])
+        return self.duracion_segundos
