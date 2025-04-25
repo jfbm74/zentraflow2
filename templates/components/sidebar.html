@@ -80,6 +80,12 @@
                 </a>
             </li>
             <li class="sidebar-menu-item">
+                <a href="/admin/" class="sidebar-menu-link {% if active_menu == 'admin' %}active{% endif %}">
+                    <i class="fas fa-user-shield sidebar-menu-icon"></i>
+                    <span class="sidebar-menu-text">Admin</span>
+                </a>
+            </li>
+            <li class="sidebar-menu-item">
                 <a href="{% url 'logout' %}" class="sidebar-menu-link logout-link">
                     <i class="fas fa-sign-out-alt sidebar-menu-icon"></i>
                     <span class="sidebar-menu-text">Cerrar Sesión</span>
