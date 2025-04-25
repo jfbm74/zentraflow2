@@ -53,7 +53,7 @@ INSTALLED_APPS = [
     'apps.authentication.apps.AuthenticationConfig',
     'apps.core.apps.CoreConfig',
     'apps.configuracion.apps.ConfiguracionConfig',
-    'apps.ingesta_correo.apps.IngestaCorreoConfig',
+    #'apps.ingesta_correo.apps.IngestaCorreoConfig',
 ]
 
 
