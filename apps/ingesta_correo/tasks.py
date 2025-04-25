@@ -381,3 +381,27 @@ def execute_ingestion_now(servicio_id, user_id=None):
     except Exception as e:
         logger.error(f"Error en ingesta manual para servicio {servicio_id}: {str(e)}")
         return f"Error en ingesta manual: {str(e)}"
+
+@shared_task
+def sync_service_status():
+    """Tarea programada para sincronizar el estado del servicio de ingesta."""
+    for tenant in Tenant.objects.filter(is_active=True):
+        try:
+            # Verificar servicios de ingesta
+            servicios = ServicioIngesta.objects.filter(tenant=tenant)
+            for servicio in servicios:
+                servicio.ultima_verificacion = timezone.now()
+                servicio.save(update_fields=['ultima_verificacion'])
+                
+                # Registrar verificación
+                LogActividad.objects.create(
+                    tenant=tenant,
+                    evento='SERVICIO_VERIFICADO',
+                    detalles="Verificación periódica del servicio de ingesta",
+                    estado='info'
+                )
+        except Exception as e:
+            logger.error(f"Error al sincronizar estado del servicio para {tenant}: {str(e)}")
+            continue
+    
+    return "Sincronización de estado del servicio completada"

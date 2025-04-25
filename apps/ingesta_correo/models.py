@@ -14,6 +14,7 @@ class ServicioIngesta(models.Model):
     intervalo_minutos = models.IntegerField(default=5)
     proxima_ejecucion = models.DateTimeField(null=True, blank=True)
     en_ejecucion = models.BooleanField(default=False)
+    ultima_verificacion = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         verbose_name = "Servicio de Ingesta"
@@ -27,6 +28,48 @@ class ServicioIngesta(models.Model):
         """Actualiza el timestamp de próxima ejecución basado en el intervalo."""
         self.proxima_ejecucion = timezone.now() + timezone.timedelta(minutes=self.intervalo_minutos)
         return self.proxima_ejecucion
+
+    def tiempo_hasta_proxima_ejecucion(self):
+        """Calcula el tiempo hasta la próxima ejecución y lo devuelve en formato legible."""
+        if not self.proxima_ejecucion:
+            return "No programado"
+            
+        if not self.activo:
+            return "Servicio inactivo"
+            
+        now = timezone.now()
+        if self.proxima_ejecucion <= now:
+            return "Pendiente"
+            
+        # Calcular diferencia de tiempo
+        delta = self.proxima_ejecucion - now
+        seconds = delta.total_seconds()
+        
+        # Formatear tiempo
+        if seconds < 60:
+            return f"{int(seconds)} segundos"
+        elif seconds < 3600:
+            return f"{int(seconds/60)} minutos"
+        elif seconds < 86400:
+            horas = int(seconds/3600)
+            minutos = int((seconds % 3600) / 60)
+            return f"{horas} horas, {minutos} minutos"
+        else:
+            dias = int(seconds/86400)
+            horas = int((seconds % 86400) / 3600)
+            return f"{dias} días, {horas} horas"
+
+    @property
+    def correos_procesados_total(self):
+        """Retorna el total de correos procesados por este servicio."""
+        from django.db.models import Sum
+        return self.historial.aggregate(total=Sum('correos_procesados'))['total'] or 0
+        
+    @property
+    def correos_ultima_ejecucion(self):
+        """Retorna el número de correos procesados en la última ejecución."""
+        ultima = self.historial.order_by('-fecha_inicio').first()
+        return ultima.correos_procesados if ultima else 0
 
 class HistorialEjecucion(models.Model):
     class EstadoEjecucion(models.TextChoices):
@@ -140,3 +183,47 @@ class EstadisticaDiaria(models.Model):
     
     def __str__(self):
         return f"Estadísticas {self.tenant} - {self.fecha}" 
+
+class ReglaFiltrado(models.Model):
+    """
+    Modelo para reglas de filtrado de correos.
+    Permite definir condiciones para procesar o ignorar correos basado en distintos criterios.
+    """
+    class TipoCampo(models.TextChoices):
+        REMITENTE = 'remitente', 'Remitente'
+        ASUNTO = 'asunto', 'Asunto'
+        CONTENIDO = 'contenido', 'Contenido del correo'
+        ADJUNTO_NOMBRE = 'adjunto_nombre', 'Nombre de adjunto'
+        
+    class TipoCondicion(models.TextChoices):
+        CONTIENE = 'contiene', 'Contiene'
+        NO_CONTIENE = 'no_contiene', 'No contiene'
+        ES_IGUAL = 'es_igual', 'Es igual a'
+        EMPIEZA_CON = 'empieza_con', 'Empieza con'
+        TERMINA_CON = 'termina_con', 'Termina con'
+        REGEX = 'regex', 'Expresión regular'
+        
+    class TipoAccion(models.TextChoices):
+        PROCESAR = 'procesar', 'Procesar correo'
+        IGNORAR = 'ignorar', 'Ignorar correo'
+        MARCAR_REVISION = 'marcar_revision', 'Marcar para revisión'
+        
+    servicio = models.ForeignKey(ServicioIngesta, on_delete=models.CASCADE, related_name='reglas')
+    nombre = models.CharField(max_length=100)
+    campo = models.CharField(max_length=20, choices=TipoCampo.choices)
+    condicion = models.CharField(max_length=20, choices=TipoCondicion.choices)
+    valor = models.CharField(max_length=255)
+    accion = models.CharField(max_length=20, choices=TipoAccion.choices)
+    activa = models.BooleanField(default=True)
+    prioridad = models.IntegerField(default=0)
+    creado_en = models.DateTimeField(auto_now_add=True)
+    modificado_en = models.DateTimeField(auto_now=True)
+    creado_por = models.ForeignKey('authentication.ZentraflowUser', on_delete=models.SET_NULL, null=True, blank=True)
+    
+    class Meta:
+        verbose_name = "Regla de Filtrado"
+        verbose_name_plural = "Reglas de Filtrado"
+        ordering = ['prioridad', 'nombre']
+        
+    def __str__(self):
+        return f"{self.nombre} ({self.get_campo_display()} {self.get_condicion_display()} '{self.valor}')" 

@@ -16,6 +16,8 @@ urlpatterns = [
     path("auth/", include("apps.authentication.web.urls")),
     path("dashboard/", DashboardView.as_view(), name="dashboard"),
     path("configuracion/", include("apps.configuracion.urls")),
+    # Agregar URLs de la aplicación ingesta_correo con el namespace 'ingesta_correo'
+    path("ingesta-correo/", include("apps.ingesta_correo.urls", namespace="ingesta_correo")),
     path("", RedirectView.as_view(url="/dashboard/", permanent=False), name="home"),
     path('<int:tenant_id>/', ConfiguracionView.as_view(), name='configuracion_tenant'),
     

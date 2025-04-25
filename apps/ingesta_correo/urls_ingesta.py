@@ -10,7 +10,7 @@ from .views_ingesta import (
 
 urlpatterns = [
     # Vistas web
-    path('programada/', IngestaControlPanelView.as_view(), name='ingesta_programada'),
+    path('programada/', IngestaControlPanelView.as_view(), name='control_panel'),
     path('historial/', HistorialIngestaView.as_view(), name='historial_ingesta'),
     
     # API endpoints
