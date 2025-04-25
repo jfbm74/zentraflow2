@@ -1,0 +1,74 @@
+RFC 001: Dashboard Resumido con Métricas y Gráficos Visuales
+Objetivo
+Implementar un panel de control con métricas clave y gráficos visuales para el módulo de Ingesta de Correo, mejorando la visibilidad y monitoreo del sistema.
+Diseño
+
+Componentes principales:
+
+Indicadores numéricos para: correos procesados, glosas extraídas, pendientes, errores (últimas 24h)
+Gráfico de líneas para tendencias diarias (últimos 7 días)
+Indicadores de estado con códigos de color (verde: normal, amarillo: alertas, rojo: errores)
+
+
+Archivos a crear/modificar:
+templates/components/sidebar.html (modificar): agregar enlace al modulo Ingesta de Correo
+apps/ingesta_correo/services/dashboard_service.py (nuevo)
+apps/ingesta_correo/templates/ingesta_correo/dashboard.html (nuevo)
+apps/ingesta_correo/views.py (modificar)
+
+
+Diseño de servicio:
+
+# apps/ingesta_correo/services/dashboard_service.py
+from django.utils import timezone
+from django.db.models import Count, Sum
+from datetime import timedelta
+from ..models import CorreoIngesta, EstadisticaDiaria
+
+class DashboardService:
+    @staticmethod
+    def get_metrics_last_24h(tenant):
+        """Obtiene métricas de las últimas 24 horas."""
+        yesterday = timezone.now() - timedelta(days=1)
+        correos = CorreoIngesta.objects.filter(
+            servicio__tenant=tenant,
+            fecha_recepcion__gte=yesterday
+        )
+        
+        return {
+            'correos_procesados': correos.filter(estado='PROCESADO').count(),
+            'glosas_extraidas': correos.aggregate(total=Sum('glosas_extraidas'))['total'] or 0,
+            'pendientes': correos.filter(estado='PENDIENTE').count(),
+            'errores': correos.filter(estado='ERROR').count(),
+        }
+    
+    @staticmethod
+    def get_daily_trends(tenant, days=7):
+        """Obtiene tendencias diarias para los últimos N días."""
+        start_date = timezone.now().date() - timedelta(days=days)
+        
+        stats = EstadisticaDiaria.objects.filter(
+            tenant=tenant,
+            fecha__gte=start_date
+        ).order_by('fecha')
+        
+        return stats
+API Endpoints
+Crear endpoint /api/ingesta/dashboard/ que devuelva:
+
+Métricas de 24h
+Tendencias diarias
+Estado del servicio
+
+Interfaz de Usuario
+
+Panel en la parte superior con números grandes para métricas clave
+Gráfico de líneas debajo para tendencias
+Iconos visuales que indiquen el estado
+Actualización automática cada 5 minutos
+
+Dependencias
+
+Librería Chart.js para gráficos
+Acceso a los modelos CorreoIngesta y EstadisticaDiaria
+

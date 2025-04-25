@@ -1,0 +1,519 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Historial de Ingesta | ZentraFlow{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/ingesta_correo/dashboard.css' %}">
+<style>
+    /* Estilos para los botones de filtrar y limpiar */
+    .btn-filter {
+        background-color: var(--primary-color);
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 8px;
+        font-weight: 500;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+    }
+
+    .btn-filter:hover {
+        background-color: var(--primary-color-dark);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
+    }
+
+    .btn-clean {
+        background-color: #f8f9fa;
+        color: #6c757d;
+        border: 1px solid #dee2e6;
+        padding: 10px 20px;
+        border-radius: 8px;
+        font-weight: 500;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+    }
+
+    .btn-clean:hover {
+        background-color: #e9ecef;
+        color: #495057;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .btn-filter i, .btn-clean i {
+        font-size: 0.9em;
+    }
+
+    .buttons-container {
+        display: flex;
+        gap: 10px;
+        width: 100%;
+    }
+
+    @media (max-width: 768px) {
+        .buttons-container {
+            flex-direction: column;
+        }
+        .btn-filter, .btn-clean {
+            width: 100%;
+        }
+    }
+
+    /* Estilos para los badges de estado */
+    .badge {
+        color: white !important;
+        font-weight: 500;
+        padding: 0.5em 0.75em;
+    }
+
+    .badge.bg-success {
+        background-color: #198754 !important;
+    }
+
+    .badge.bg-danger {
+        background-color: #dc3545 !important;
+    }
+
+    .badge.bg-warning {
+        background-color: #ffc107 !important;
+        color: #000 !important;
+    }
+
+    .badge.bg-secondary {
+        background-color: #6c757d !important;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Título de la página -->
+    <div class="page-title">
+        <h1><i class="fas fa-history me-2"></i> Historial de Ingesta</h1>
+        
+        <div class="d-flex gap-2">
+            <a href="{% url 'ingesta_programada' %}" class="btn-secondary-action">
+                <i class="fas fa-arrow-left"></i> Volver al Panel
+            </a>
+        </div>
+    </div>
+    
+    <!-- Filtros -->
+    <div class="config-card mb-4">
+        <div class="config-card-header">
+            <h3><i class="fas fa-filter"></i> Filtros</h3>
+        </div>
+        <div class="config-card-body">
+            <form id="filtroForm" method="get" action="{% url 'historial_ingesta' %}">
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="mb-3">
+                            <label for="estado" class="form-label">Estado</label>
+                            <select class="form-select" id="estado" name="estado">
+                                <option value="">Todos</option>
+                                {% for valor, nombre in estados %}
+                                <option value="{{ valor }}" {% if filtros.estado == valor %}selected{% endif %}>{{ nombre }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="mb-3">
+                            <label for="fecha_desde" class="form-label">Fecha desde</label>
+                            <input type="date" class="form-control" id="fecha_desde" name="fecha_desde" value="{{ filtros.fecha_desde }}">
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="mb-3">
+                            <label for="fecha_hasta" class="form-label">Fecha hasta</label>
+                            <input type="date" class="form-control" id="fecha_hasta" name="fecha_hasta" value="{{ filtros.fecha_hasta }}">
+                        </div>
+                    </div>
+                    <div class="col-md-3 d-flex align-items-end">
+                        <div class="mb-3 w-100">
+                            <div class="buttons-container">
+                                <button type="submit" class="btn-filter">
+                                    <i class="fas fa-search"></i>
+                                    <span>Filtrar</span>
+                                </button>
+                                <a href="{% url 'historial_ingesta' %}" class="btn-clean">
+                                    <i class="fas fa-eraser"></i>
+                                    <span>Limpiar</span>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Resultados -->
+    <div class="config-card">
+        <div class="config-card-header">
+            <h3><i class="fas fa-list"></i> Resultados ({{ total_ejecuciones }})</h3>
+        </div>
+        <div class="config-card-body">
+            {% if historial %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Fecha de Inicio</th>
+                                <th>Fecha de Fin</th>
+                                <th>Duración</th>
+                                <th>Estado</th>
+                                <th>Correos Procesados</th>
+                                <th>Glosas Extraídas</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in historial %}
+                            <tr>
+                                <td>{{ item.id }}</td>
+                                <td>{{ item.fecha_inicio|date:"d/m/Y H:i:s" }}</td>
+                                <td>
+                                    {% if item.fecha_fin %}
+                                        {{ item.fecha_fin|date:"d/m/Y H:i:s" }}
+                                    {% else %}
+                                        <span class="badge bg-warning">En progreso</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if item.duracion_segundos %}
+                                        {{ item.duracion_segundos }} seg
+                                    {% elif item.fecha_fin %}
+                                        {{ item.fecha_inicio|timesince:item.fecha_fin }}
+                                    {% else %}
+                                        --
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if item.estado == 'EXITOSO' %}
+                                        <span class="badge bg-success">Exitoso</span>
+                                    {% elif item.estado == 'ERROR' %}
+                                        <span class="badge bg-danger">Error</span>
+                                    {% elif item.estado == 'PARCIAL' %}
+                                        <span class="badge bg-warning">Parcial</span>
+                                    {% elif item.estado == 'CANCELADO' %}
+                                        <span class="badge bg-secondary">Cancelado</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">{{ item.estado }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ item.correos_procesados }}</td>
+                                <td>{{ item.glosas_extraidas }}</td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-info ver-detalle" data-id="{{ item.id }}">
+                                        <i class="fas fa-eye"></i> Detalles
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Paginación -->
+                {% if historial.has_other_pages %}
+                <nav aria-label="Navegación de páginas" class="mt-4">
+                    <ul class="pagination justify-content-center">
+                        {% if historial.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page=1{% if filtros.estado %}&estado={{ filtros.estado }}{% endif %}{% if filtros.fecha_desde %}&fecha_desde={{ filtros.fecha_desde }}{% endif %}{% if filtros.fecha_hasta %}&fecha_hasta={{ filtros.fecha_hasta }}{% endif %}" aria-label="Primera">
+                                <span aria-hidden="true">&laquo;&laquo;</span>
+                            </a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ historial.previous_page_number }}{% if filtros.estado %}&estado={{ filtros.estado }}{% endif %}{% if filtros.fecha_desde %}&fecha_desde={{ filtros.fecha_desde }}{% endif %}{% if filtros.fecha_hasta %}&fecha_hasta={{ filtros.fecha_hasta }}{% endif %}" aria-label="Anterior">
+                                <span aria-hidden="true">&laquo;</span>
+                            </a>
+                        </li>
+                        {% else %}
+                        <li class="page-item disabled">
+                            <a class="page-link" href="#" aria-label="Primera">
+                                <span aria-hidden="true">&laquo;&laquo;</span>
+                            </a>
+                        </li>
+                        <li class="page-item disabled">
+                            <a class="page-link" href="#" aria-label="Anterior">
+                                <span aria-hidden="true">&laquo;</span>
+                            </a>
+                        </li>
+                        {% endif %}
+                        
+                        {% for i in historial.paginator.page_range %}
+                            {% if historial.number == i %}
+                                <li class="page-item active"><a class="page-link" href="#">{{ i }}</a></li>
+                            {% elif i > historial.number|add:'-3' and i < historial.number|add:'3' %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ i }}{% if filtros.estado %}&estado={{ filtros.estado }}{% endif %}{% if filtros.fecha_desde %}&fecha_desde={{ filtros.fecha_desde }}{% endif %}{% if filtros.fecha_hasta %}&fecha_hasta={{ filtros.fecha_hasta }}{% endif %}">{{ i }}</a>
+                                </li>
+                            {% endif %}
+                        {% endfor %}
+                        
+                        {% if historial.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ historial.next_page_number }}{% if filtros.estado %}&estado={{ filtros.estado }}{% endif %}{% if filtros.fecha_desde %}&fecha_desde={{ filtros.fecha_desde }}{% endif %}{% if filtros.fecha_hasta %}&fecha_hasta={{ filtros.fecha_hasta }}{% endif %}" aria-label="Siguiente">
+                                <span aria-hidden="true">&raquo;</span>
+                            </a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ historial.paginator.num_pages }}{% if filtros.estado %}&estado={{ filtros.estado }}{% endif %}{% if filtros.fecha_desde %}&fecha_desde={{ filtros.fecha_desde }}{% endif %}{% if filtros.fecha_hasta %}&fecha_hasta={{ filtros.fecha_hasta }}{% endif %}" aria-label="Última">
+                                <span aria-hidden="true">&raquo;&raquo;</span>
+                            </a>
+                        </li>
+                        {% else %}
+                        <li class="page-item disabled">
+                            <a class="page-link" href="#" aria-label="Siguiente">
+                                <span aria-hidden="true">&raquo;</span>
+                            </a>
+                        </li>
+                        <li class="page-item disabled">
+                            <a class="page-link" href="#" aria-label="Última">
+                                <span aria-hidden="true">&raquo;&raquo;</span>
+                            </a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                {% endif %}
+                
+            {% else %}
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i> No se encontraron registros.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Detalles de Ejecución -->
+<div class="modal fade" id="detallesEjecucionModal" tabindex="-1" aria-labelledby="detallesEjecucionModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="detallesEjecucionModalLabel">Detalles de Ejecución</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Información General</h6>
+                        <table class="table table-sm">
+                            <tr>
+                                <th>Fecha de Inicio:</th>
+                                <td id="detalle-fecha-inicio">--</td>
+                            </tr>
+                            <tr>
+                                <th>Fecha de Fin:</th>
+                                <td id="detalle-fecha-fin">--</td>
+                            </tr>
+                            <tr>
+                                <th>Duración:</th>
+                                <td id="detalle-duracion">--</td>
+                            </tr>
+                            <tr>
+                                <th>Estado:</th>
+                                <td id="detalle-estado">--</td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Resultados</h6>
+                        <table class="table table-sm">
+                            <tr>
+                                <th>Correos Procesados:</th>
+                                <td id="detalle-correos-procesados">--</td>
+                            </tr>
+                            <tr>
+                                <th>Correos Nuevos:</th>
+                                <td id="detalle-correos-nuevos">--</td>
+                            </tr>
+                            <tr>
+                                <th>Archivos Procesados:</th>
+                                <td id="detalle-archivos-procesados">--</td>
+                            </tr>
+                            <tr>
+                                <th>Glosas Extraídas:</th>
+                                <td id="detalle-glosas-extraidas">--</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+                
+                <div id="detalle-error-container" class="alert alert-danger d-none">
+                    <h6>Error Detectado</h6>
+                    <p id="detalle-mensaje-error"></p>
+                </div>
+                
+                <div class="mt-3">
+                    <h6>Actividad Registrada</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm" id="detalle-logs-table">
+                            <thead>
+                                <tr>
+                                    <th>Fecha/Hora</th>
+                                    <th>Evento</th>
+                                    <th>Detalle</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td colspan="3" class="text-center">Cargando...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <div class="mt-3" id="detalles-tecnicos-container">
+                    <h6>Detalles Técnicos</h6>
+                    <pre id="detalles-tecnicos" class="bg-light p-3 rounded" style="max-height: 200px; overflow-y: auto;">Cargando...</pre>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Modal de detalles
+        const detallesModal = new bootstrap.Modal(document.getElementById('detallesEjecucionModal'));
+        
+        // Listener para botones de ver detalle
+        document.querySelectorAll('.ver-detalle').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const ejecucionId = this.dataset.id;
+                fetchEjecucionDetalle(ejecucionId);
+            });
+        });
+        
+        // Función para obtener detalles de una ejecución
+        function fetchEjecucionDetalle(ejecucionId) {
+            fetch(`/ingesta-correo/api/historial/${ejecucionId}/`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Mostrar información en el modal
+                        updateDetalleModal(data.historial, data.logs);
+                        // Mostrar modal
+                        detallesModal.show();
+                    } else {
+                        alert(data.message || 'Error al obtener detalles');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error de conexión al servidor');
+                });
+        }
+        
+        // Función para actualizar el modal con los detalles
+        function updateDetalleModal(historial, logs) {
+            // Información general
+            document.getElementById('detalle-fecha-inicio').textContent = 
+                historial.fecha_inicio ? new Date(historial.fecha_inicio).toLocaleString() : '--';
+            
+            document.getElementById('detalle-fecha-fin').textContent = 
+                historial.fecha_fin ? new Date(historial.fecha_fin).toLocaleString() : '--';
+            
+            document.getElementById('detalle-duracion').textContent = 
+                historial.duracion_segundos ? `${historial.duracion_segundos} segundos` : '--';
+            
+            // Estado
+            const estadoEl = document.getElementById('detalle-estado');
+            if (estadoEl) {
+                if (historial.estado === 'EXITOSO') {
+                    estadoEl.innerHTML = '<span class="badge bg-success">Exitoso</span>';
+                } else if (historial.estado === 'ERROR') {
+                    estadoEl.innerHTML = '<span class="badge bg-danger">Error</span>';
+                } else if (historial.estado === 'PARCIAL') {
+                    estadoEl.innerHTML = '<span class="badge bg-warning">Parcial</span>';
+                } else {
+                    estadoEl.innerHTML = `<span class="badge bg-secondary">${historial.estado}</span>`;
+                }
+            }
+            
+            // Resultados
+            document.getElementById('detalle-correos-procesados').textContent = historial.correos_procesados || 0;
+            document.getElementById('detalle-correos-nuevos').textContent = historial.correos_nuevos || 0;
+            document.getElementById('detalle-archivos-procesados').textContent = historial.archivos_procesados || 0;
+            document.getElementById('detalle-glosas-extraidas').textContent = historial.glosas_extraidas || 0;
+            
+            // Mensaje de error
+            const errorContainer = document.getElementById('detalle-error-container');
+            const mensajeError = document.getElementById('detalle-mensaje-error');
+            
+            if (historial.mensaje_error) {
+                errorContainer.classList.remove('d-none');
+                mensajeError.textContent = historial.mensaje_error;
+            } else {
+                errorContainer.classList.add('d-none');
+                mensajeError.textContent = '';
+            }
+            
+            // Mostrar detalles técnicos
+            const detallesTecnicosContainer = document.getElementById('detalles-tecnicos-container');
+            const detallesTecnicos = document.getElementById('detalles-tecnicos');
+            
+            if (historial.detalles) {
+                detallesTecnicosContainer.classList.remove('d-none');
+                detallesTecnicos.textContent = JSON.stringify(historial.detalles, null, 2);
+            } else {
+                detallesTecnicosContainer.classList.add('d-none');
+                detallesTecnicos.textContent = 'No hay detalles disponibles';
+            }
+            
+            // Actualizar tabla de logs
+            const logsTable = document.getElementById('detalle-logs-table').querySelector('tbody');
+            logsTable.innerHTML = '';
+            
+            if (logs && logs.length > 0) {
+                logs.forEach(log => {
+                    const fecha = new Date(log.fecha_hora);
+                    
+                    // Determinar icono según evento
+                    let iconHtml = '';
+                    if (log.evento.includes('INICIADA')) {
+                        iconHtml = '<i class="fas fa-play text-primary"></i>';
+                    } else if (log.evento.includes('COMPLETADA')) {
+                        iconHtml = '<i class="fas fa-check-circle text-success"></i>';
+                    } else if (log.evento.includes('ERROR')) {
+                        iconHtml = '<i class="fas fa-exclamation-circle text-danger"></i>';
+                    } else {
+                        iconHtml = '<i class="fas fa-info-circle text-secondary"></i>';
+                    }
+                    
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${fecha.toLocaleString()}</td>
+                        <td>${iconHtml} ${log.evento}</td>
+                        <td>${log.detalles}</td>
+                    `;
+                    logsTable.appendChild(tr);
+                });
+            } else {
+                logsTable.innerHTML = '<tr><td colspan="3" class="text-center">No hay registros disponibles</td></tr>';
+            }
+        }
+    });
+</script>
+{% endblock %}

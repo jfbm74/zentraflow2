@@ -1,0 +1,699 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}ZentraFlow - Ingesta de Correo{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/ingesta_correo/dashboard.css' %}">
+<style>
+    .chart-container {
+        position: relative;
+        height: 200px;
+        width: 100%;
+    }
+
+    .dashboard-card-body.py-2 {
+        padding-top: 0.5rem !important;
+        padding-bottom: 0.5rem !important;
+    }
+
+    /* Estilos para los controles del gráfico */
+    .chart-controls {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .period-select {
+        position: relative;
+    }
+
+    .period-select .form-select {
+        padding: 0.25rem 2rem 0.25rem 0.75rem;
+        font-size: 0.875rem;
+        border: 1px solid #e2e8f0;
+        border-radius: 0.5rem;
+        background-color: #f8fafc;
+        color: #1e293b;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .period-select .form-select:hover {
+        border-color: #cbd5e1;
+        background-color: #f1f5f9;
+    }
+
+    .period-select .form-select:focus {
+        border-color: #6366f1;
+        box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.1);
+        outline: none;
+    }
+
+    .btn-refresh {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        padding: 0;
+        border: 1px solid #e2e8f0;
+        border-radius: 0.5rem;
+        background-color: #f8fafc;
+        color: #64748b;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .btn-refresh:hover {
+        background-color: #f1f5f9;
+        color: #1e293b;
+        border-color: #cbd5e1;
+    }
+
+    .btn-refresh i {
+        font-size: 0.875rem;
+    }
+
+    .btn-refresh.loading i {
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+
+    .stats-cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+        width: 100%;
+    }
+
+    .stat-card {
+        background: white;
+        border-radius: 0.75rem;
+        padding: 1rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        transition: all 0.2s ease;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .stat-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+    }
+
+    .stat-card.processed-emails::before { background: var(--primary-gradient); }
+    .stat-card.extracted-claims::before { background: var(--secondary-gradient); }
+    .stat-card.pending::before { background: var(--success-gradient); }
+    .stat-card.errors::before { background: var(--danger-gradient); }
+
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+
+    .stat-card-content {
+        display: flex;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+
+    .stat-card-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 2.5rem;
+        height: 2.5rem;
+        border-radius: 0.5rem;
+        font-size: 1.25rem;
+        transition: all 0.2s ease;
+    }
+
+    .stat-card.processed-emails .stat-card-icon {
+        background: rgba(99, 102, 241, 0.1);
+        color: #6366f1;
+    }
+
+    .stat-card.extracted-claims .stat-card-icon {
+        background: rgba(245, 158, 11, 0.1);
+        color: #f59e0b;
+    }
+
+    .stat-card.pending .stat-card-icon {
+        background: rgba(16, 185, 129, 0.1);
+        color: #10b981;
+    }
+
+    .stat-card.errors .stat-card-icon {
+        background: rgba(239, 68, 68, 0.1);
+        color: #ef4444;
+    }
+
+    .stat-card:hover .stat-card-icon {
+        transform: scale(1.1);
+    }
+
+    .stat-card-info {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .stat-card-title {
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 0.25rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .stat-card-value {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: #1e293b;
+        line-height: 1.2;
+        margin-bottom: 0.5rem;
+    }
+
+    .stat-card-footer {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    .stat-card-trend {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+        font-size: 0.875rem;
+        font-weight: 500;
+    }
+
+    .stat-card-trend .text-success {
+        color: #10b981;
+    }
+
+    .stat-card-trend .text-danger {
+        color: #ef4444;
+    }
+
+    .stat-card-trend .text-secondary {
+        color: #64748b;
+    }
+
+    .stat-card-footer-text {
+        font-size: 0.75rem;
+        color: #64748b;
+    }
+
+    /* Ajustes responsivos adicionales */
+    @media (max-width: 640px) {
+        .stats-cards {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    @media (max-width: 480px) {
+        .stats-cards {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- CSRF token para formularios POST -->
+{% csrf_token %}
+
+<div class="page-title">
+    <h1>Ingesta de Correo - {{ request.user.tenant.name }}</h1>
+    <div class="d-flex align-items-center gap-3">
+        <button class="btn-action" id="toggleServicio" {% if not system_status.oauth_authorized or not system_status.oauth_token_valid %}disabled{% endif %}>
+            {% if system_status.servicio_activo %}
+            <i class="fas fa-stop-circle"></i> Detener Servicio
+            {% else %}
+            <i class="fas fa-play-circle"></i> Iniciar Servicio
+            {% endif %}
+        </button>
+        <button class="btn-secondary-action" id="verifyConnection">
+            <i class="fas fa-sync-alt"></i> Verificar Conexión
+        </button>
+    </div>
+</div>
+
+<!-- Alerta de estado (oculta por defecto) -->
+<div class="alert alert-info alert-dismissible fade show mb-4" role="alert" id="statusAlert" style="display: none;">
+    <div class="alert-icon">
+        <i class="fas fa-info-circle"></i>
+    </div>
+    <div class="alert-message">
+        <span id="statusMessage">Estado del servicio</span>
+    </div>
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+
+<!-- Estado del Sistema Card -->
+<div class="config-card mb-4">
+    <div class="config-card-header d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-center gap-3">
+            <h3 class="mb-0"><i class="fas fa-heartbeat"></i> Estado del Servicio</h3>
+            <span class="status-badge">
+                {% if system_status.servicio_activo and system_status.oauth_authorized and system_status.oauth_token_valid %}
+                    <span class="badge bg-success"><i class="fas fa-check-circle"></i> En funcionamiento</span>
+                {% elif system_status.servicio_activo and not system_status.oauth_authorized %}
+                    <span class="badge bg-warning"><i class="fas fa-exclamation-triangle"></i> Inconsistente - OAuth no autorizado</span>
+                {% elif system_status.servicio_activo and not system_status.oauth_token_valid %}
+                    <span class="badge bg-warning"><i class="fas fa-exclamation-triangle"></i> Inconsistente - Token expirado</span>
+                {% elif system_status.estado_general == 'error' %}
+                    <span class="badge bg-danger"><i class="fas fa-times-circle"></i> Con errores</span>
+                {% else %}
+                    <span class="badge bg-secondary"><i class="fas fa-pause-circle"></i> Inactivo</span>
+                {% endif %}
+            </span>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <button class="btn btn-outline-primary btn-sm" id="refreshChart">
+                <i class="fas fa-sync-alt"></i> Actualizar
+            </button>
+            <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#serviceStatusDetails" aria-expanded="false" aria-controls="serviceStatusDetails">
+                <i class="fas fa-chevron-down"></i> Detalles
+            </button>
+        </div>
+    </div>
+    <div class="collapse" id="serviceStatusDetails">
+        <div class="config-card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="system-status-overview">
+                        <div class="system-status-icon {% if system_status.servicio_activo and system_status.oauth_authorized and system_status.oauth_token_valid %}active{% else %}inactive{% endif %}">
+                            <i class="fas {% if system_status.servicio_activo and system_status.oauth_authorized and system_status.oauth_token_valid %}fa-check-circle{% else %}fa-exclamation-triangle{% endif %}"></i>
+                        </div>
+                        <div class="system-status-details">
+                            <h4 class="system-status-title">
+                                {% if system_status.servicio_activo and system_status.oauth_authorized and system_status.oauth_token_valid %}
+                                    Sistema Operativo
+                                {% else %}
+                                    Sistema Requiere Atención
+                                {% endif %}
+                            </h4>
+                            <p class="system-status-description">
+                                {% if system_status.servicio_activo and system_status.oauth_authorized and system_status.oauth_token_valid %}
+                                    Todos los componentes están funcionando correctamente
+                                {% elif not system_status.oauth_authorized %}
+                                    La conexión OAuth no está autorizada
+                                {% elif not system_status.oauth_token_valid %}
+                                    El token de autorización ha expirado
+                                {% elif not system_status.servicio_activo %}
+                                    El servicio está inactivo
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="status-item">
+                        <span class="status-label">Servicio:</span>
+                        <span id="service-status" class="status-value">
+                            {% if system_status.servicio_activo %}
+                                <span class="text-success"><i class="fas fa-circle"></i> Activo</span>
+                            {% else %}
+                                <span class="text-secondary"><i class="fas fa-circle"></i> Inactivo</span>
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">OAuth:</span>
+                        <span id="oauth-status" class="status-value">
+                            {% if system_status.oauth_authorized and system_status.oauth_token_valid %}
+                                <span class="text-success"><i class="fas fa-circle"></i> Autorizado</span>
+                            {% elif system_status.oauth_authorized and not system_status.oauth_token_valid %}
+                                <span class="text-warning"><i class="fas fa-exclamation-circle"></i> Token expirado</span>
+                            {% else %}
+                                <span class="text-danger"><i class="fas fa-circle"></i> No autorizado</span>
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Cuenta asociada:</span>
+                        <span id="email-account" class="status-value">
+                            {% if system_status.email_address %}
+                                <span class="email-address" title="{{ system_status.email_address }}">
+                                    <i class="fas fa-envelope text-secondary me-1"></i>{{ system_status.email_address }}
+                                </span>
+                            {% else %}
+                                <span class="text-muted">No configurada</span>
+                                <a href="{% url 'configuracion' %}#correo" class="ms-2 badge bg-primary">
+                                    <i class="fas fa-cog"></i> Configurar
+                                </a>
+                            {% endif %}
+                        </span>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="status-item">
+                        <span class="status-label">Última verificación:</span>
+                        <span id="last-check" class="status-value">
+                            {% if system_status.ultima_verificacion %}
+                                <span class="timestamp" title="{{ system_status.ultima_verificacion|date:'d/m/Y H:i:s' }}">
+                                    <i class="fas fa-clock text-secondary me-1"></i>{{ system_status.ultima_verificacion|date:"d/m/Y H:i:s" }}
+                                </span>
+                            {% else %}
+                                <span class="text-muted">Nunca</span>
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Último correo procesado:</span>
+                        <span id="last-processed" class="status-value">
+                            {% if system_status.ultimo_correo_procesado %}
+                                <span class="timestamp" title="{{ system_status.ultimo_correo_procesado|date:'d/m/Y H:i:s' }}">
+                                    <i class="fas fa-clock text-secondary me-1"></i>{{ system_status.ultimo_correo_procesado|date:"d/m/Y H:i:s" }}
+                                </span>
+                            {% else %}
+                                <span class="text-muted">Nunca</span>
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Errores recientes:</span>
+                        <span id="recent-errors" class="status-value">
+                            {% if system_status.errores_recientes > 0 %}
+                                <span class="text-danger">{{ system_status.errores_recientes }}</span>
+                                <a href="{% url 'ingesta_correo_correos' %}?estado=ERROR" class="ms-2 badge bg-danger">
+                                    <i class="fas fa-search"></i> Ver errores
+                                </a>
+                            {% else %}
+                                <span class="text-success">0</span>
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Reintentos:</span>
+                        <span id="retry-count" class="status-value">{{ system_status.reintentos|default:"0" }}</span>
+                    </div>
+                </div>
+            </div>
+            
+            {% if not system_status.oauth_authorized or not system_status.oauth_token_valid %}
+            <div class="alert alert-warning mt-3 mb-0">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                <strong>Atención:</strong> 
+                {% if not system_status.oauth_authorized %}
+                    No se ha autorizado la conexión OAuth. 
+                {% elif not system_status.oauth_token_valid %}
+                    El token de autorización ha expirado.
+                {% endif %}
+                <a href="{% url 'configuracion' %}#correo" class="alert-link">Configure la conexión</a> para habilitar el servicio.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Stats Cards -->
+<div class="stats-cards">
+    <div class="stat-card processed-emails">
+        <div class="stat-card-content">
+            <div class="stat-card-icon">
+                <i class="fas fa-envelope-open"></i>
+            </div>
+            <div class="stat-card-info">
+                <div class="stat-card-title">CORREOS PROCESADOS</div>
+                <div class="stat-card-value" id="correos-procesados">{{ metrics_24h.correos_procesados }}</div>
+                <div class="stat-card-footer">
+                    <div class="stat-card-trend">
+                        <i class="fas fa-arrow-up text-success"></i>
+                        <span class="text-success">+5%</span>
+                    </div>
+                    <div class="stat-card-footer-text">Últimas 24 horas</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="stat-card extracted-claims">
+        <div class="stat-card-content">
+            <div class="stat-card-icon">
+                <i class="fas fa-file-alt"></i>
+            </div>
+            <div class="stat-card-info">
+                <div class="stat-card-title">GLOSAS EXTRAÍDAS</div>
+                <div class="stat-card-value" id="glosas-extraidas">{{ metrics_24h.glosas_extraidas }}</div>
+                <div class="stat-card-footer">
+                    <div class="stat-card-trend">
+                        <i class="fas fa-arrow-up text-success"></i>
+                        <span class="text-success">+12%</span>
+                    </div>
+                    <div class="stat-card-footer-text">Últimas 24 horas</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="stat-card pending">
+        <div class="stat-card-content">
+            <div class="stat-card-icon">
+                <i class="fas fa-hourglass-half"></i>
+            </div>
+            <div class="stat-card-info">
+                <div class="stat-card-title">PENDIENTES</div>
+                <div class="stat-card-value" id="pendientes">{{ metrics_24h.pendientes }}</div>
+                <div class="stat-card-footer">
+                    <div class="stat-card-trend">
+                        <i class="fas fa-arrow-down text-success"></i>
+                        <span class="text-success">-3%</span>
+                    </div>
+                    <div class="stat-card-footer-text">Correos en proceso</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="stat-card errors">
+        <div class="stat-card-content">
+            <div class="stat-card-icon">
+                <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <div class="stat-card-info">
+                <div class="stat-card-title">ERRORES</div>
+                <div class="stat-card-value" id="errores">{{ metrics_24h.errores }}</div>
+                <div class="stat-card-footer">
+                    <div class="stat-card-trend">
+                        <i class="fas fa-equals text-secondary"></i>
+                        <span class="text-secondary">Sin cambios</span>
+                    </div>
+                    <div class="stat-card-footer-text">Últimas 24 horas</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Activity Section -->
+<div class="activity-section">
+    <!-- 3. Gráfico de tendencias mejorado -->
+    <div class="dashboard-card mb-4">
+        <div class="dashboard-card-header">
+            <div class="dashboard-card-title">
+                <i class="fas fa-chart-line me-2"></i>Tendencias de Actividad
+            </div>
+            <div class="chart-controls">
+                <div class="period-select">
+                    <select class="form-select form-select-sm" id="chartPeriod">
+                        <option value="7" selected>Últimos 7 días</option>
+                        <option value="14">Últimos 14 días</option>
+                        <option value="30">Últimos 30 días</option>
+                    </select>
+                </div>
+                <button class="btn-refresh" id="refreshTrends" title="Actualizar datos">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
+            </div>
+        </div>
+        <div class="dashboard-card-body py-2">
+            <div class="chart-container">
+                <canvas id="trendsChart" height="200" data-trends="{{ daily_trends_json }}"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Activity -->
+    <div class="dashboard-card">
+        <div class="dashboard-card-header">
+            <div class="dashboard-card-title">Actividad Reciente</div>
+            <button class="btn btn-outline-primary btn-sm" id="refreshActivity">
+                <i class="fas fa-sync-alt"></i> Actualizar
+            </button>
+        </div>
+        <div class="dashboard-card-body">
+            <ul class="recent-activity-list">
+                {% if recent_activity %}
+                    {% for log in recent_activity %}
+                    <li class="recent-activity-item">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <div class="recent-activity-title">
+                                    <i class="
+                                        {% if 'ERROR' in log.evento %}fas fa-times-circle text-danger
+                                        {% elif 'SERVICIO_INICIADO' in log.evento %}fas fa-play-circle text-success
+                                        {% elif 'SERVICIO_DETENIDO' in log.evento %}fas fa-stop-circle text-secondary
+                                        {% elif 'CORREO' in log.evento %}fas fa-envelope text-primary
+                                        {% elif 'GLOSA' in log.evento %}fas fa-file-alt text-warning
+                                        {% else %}fas fa-info-circle text-info
+                                        {% endif %}
+                                        me-2
+                                    "></i>
+                                    {{ log.get_evento_display }}
+                                </div>
+                                <div class="recent-activity-subtitle">{{ log.detalles }}</div>
+                            </div>
+                            <div class="recent-activity-time text-nowrap">{{ log.fecha_hora|date:"d/m/Y H:i:s" }}</div>
+                        </div>
+                    </li>
+                    {% endfor %}
+                    {% if recent_activity|length > 3 %}
+                    <li class="text-center mt-3">
+                        <a href="{% url 'ingesta_correo_correos' %}" class="btn btn-sm btn-outline-primary">
+                            <i class="fas fa-history"></i> Ver todo el historial
+                        </a>
+                    </li>
+                    {% endif %}
+                {% else %}
+                    <li class="recent-activity-item">
+                        <div class="text-center py-4">
+                            <i class="fas fa-inbox text-muted mb-3" style="font-size: 3rem;"></i>
+                            <div class="recent-activity-title">No hay actividad reciente</div>
+                            <div class="recent-activity-subtitle">El servicio aún no ha registrado actividad</div>
+                        </div>
+                    </li>
+                {% endif %}
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- Footer Action -->
+<div class="footer-action">
+    <button class="btn-action" onclick="window.location.href='{% url 'ingesta_correo_correos' %}'">
+        <i class="fas fa-inbox"></i> Ver Listado de Correos
+    </button>
+    <button class="btn-secondary" onclick="window.location.href='{% url 'configuracion' %}#correo'">
+        <i class="fas fa-cog"></i> Configurar Ingesta
+    </button>
+</div>
+
+<!-- Modal de estado de verificación -->
+<div class="modal fade" id="verificationModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Verificación de Conexión</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="verification-status">
+                    <div class="verification-icon">
+                        <i class="fas fa-spinner fa-spin"></i>
+                    </div>
+                    <div class="verification-message">
+                        Verificando conexión...
+                    </div>
+                </div>
+                <div class="verification-details mt-3">
+                    <div class="verification-item">
+                        <span class="verification-label">Cuenta de correo:</span>
+                        <span class="verification-value" id="verification-email">-</span>
+                    </div>
+                    <div class="verification-item">
+                        <span class="verification-label">Estado OAuth:</span>
+                        <span class="verification-value" id="verification-oauth">
+                            <i class="fas fa-spinner fa-spin"></i> Verificando...
+                        </span>
+                    </div>
+                    <div class="verification-item">
+                        <span class="verification-label">Acceso a carpeta:</span>
+                        <span class="verification-value" id="verification-folder">
+                            <i class="fas fa-spinner fa-spin"></i> Verificando...
+                        </span>
+                    </div>
+                    <div class="verification-item">
+                        <span class="verification-label">Permisos de lectura:</span>
+                        <span class="verification-value" id="verification-permissions">
+                            <i class="fas fa-spinner fa-spin"></i> Verificando...
+                        </span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                <button type="button" class="btn btn-primary" id="fixConnectionBtn" style="display: none;">
+                    <i class="fas fa-wrench"></i> Arreglar Conexión
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast de notificación -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 5">
+    <div id="notification-toast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="toast-header">
+            <i class="fas fa-bell me-2"></i>
+            <strong class="me-auto" id="toast-title">Notificación</strong>
+            <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+        <div class="toast-body" id="toast-message">
+            Mensaje de notificación
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
+<script src="{% static 'js/ingesta_correo/dashboard.js' %}"></script>
+<script>
+    // Añadir rotación al icono cuando se expande/colapsa
+    document.addEventListener('DOMContentLoaded', function() {
+        const collapseButton = document.querySelector('[data-bs-toggle="collapse"]');
+        const icon = collapseButton.querySelector('i');
+        
+        document.getElementById('serviceStatusDetails').addEventListener('show.bs.collapse', function () {
+            icon.style.transform = 'rotate(180deg)';
+        });
+        
+        document.getElementById('serviceStatusDetails').addEventListener('hide.bs.collapse', function () {
+            icon.style.transform = 'rotate(0deg)';
+        });
+    });
+
+    // Configuración adicional para el gráfico
+    document.addEventListener('DOMContentLoaded', function() {
+        const ctx = document.getElementById('trendsChart').getContext('2d');
+        // Asegurarse de que el gráfico mantenga su aspecto responsive
+        Chart.defaults.maintainAspectRatio = false;
+        Chart.defaults.responsive = true;
+    });
+
+    // Añadir efecto de loading al botón de actualizar
+    document.addEventListener('DOMContentLoaded', function() {
+        const refreshBtn = document.getElementById('refreshTrends');
+        
+        refreshBtn.addEventListener('click', function() {
+            this.classList.add('loading');
+            // Remover la clase después de la actualización (ajustar según tu lógica de actualización)
+            setTimeout(() => {
+                this.classList.remove('loading');
+            }, 1000);
+        });
+    });
+</script>
+{% endblock %}

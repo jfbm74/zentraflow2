@@ -1,0 +1,264 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Correos Procesados - Ingesta de Correo{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/components/dashboard.css' %}">
+<link rel="stylesheet" href="{% static 'css/ingesta_correo/dashboard.css' %}">
+<style>
+    .filters-container {
+        background-color: white;
+        padding: 1rem;
+        border-radius: 0.5rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24);
+        margin-bottom: 1.5rem;
+    }
+    .correos-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    .correos-table th {
+        background-color: #f9fafb;
+        padding: 0.75rem 1rem;
+        text-align: left;
+        color: #374151;
+        font-weight: 600;
+        border-bottom: 1px solid #e5e7eb;
+    }
+    .correos-table td {
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid #e5e7eb;
+        color: #4b5563;
+    }
+    .correos-table tr:hover {
+        background-color: #f3f4f6;
+    }
+    .status-badge {
+        display: inline-block;
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.25rem;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+    .status-pending {
+        background-color: #fff7ed;
+        color: #c2410c;
+    }
+    .status-processed {
+        background-color: #ecfdf5;
+        color: #047857;
+    }
+    .status-error {
+        background-color: #fee2e2;
+        color: #b91c1c;
+    }
+    .status-ignored {
+        background-color: #f3f4f6;
+        color: #4b5563;
+    }
+    .pagination {
+        display: flex;
+        justify-content: center;
+        margin-top: 1.5rem;
+    }
+    .pagination .page-item {
+        margin: 0 0.25rem;
+    }
+    .pagination .page-link {
+        padding: 0.5rem 0.75rem;
+        border-radius: 0.25rem;
+        border: 1px solid #e5e7eb;
+        background-color: white;
+        color: #4b5563;
+        transition: all 0.2s ease;
+    }
+    .pagination .page-link:hover {
+        background-color: #f3f4f6;
+        color: var(--primary-color);
+    }
+    .pagination .active .page-link {
+        background-color: var(--primary-color);
+        color: white;
+        border-color: var(--primary-color);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Dashboard de Ingesta de Correo - Lista de Correos -->
+<div class="container-fluid">
+    <div class="page-title">
+        <h1>Correos Procesados</h1>
+        <div class="d-flex">
+            <button class="btn-export">
+                <i class="fas fa-file-export"></i> Exportar
+            </button>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="filters-container">
+        <form method="GET" class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label for="estado" class="form-label">Estado</label>
+                <select class="form-select" id="estado" name="estado">
+                    <option value="">Todos</option>
+                    <option value="PENDIENTE" {% if filtros.estado == "PENDIENTE" %}selected{% endif %}>Pendiente</option>
+                    <option value="PROCESADO" {% if filtros.estado == "PROCESADO" %}selected{% endif %}>Procesado</option>
+                    <option value="ERROR" {% if filtros.estado == "ERROR" %}selected{% endif %}>Error</option>
+                    <option value="IGNORADO" {% if filtros.estado == "IGNORADO" %}selected{% endif %}>Ignorado</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label for="fecha_desde" class="form-label">Fecha desde</label>
+                <input type="date" class="form-control" id="fecha_desde" name="fecha_desde" value="{{ filtros.fecha_desde }}">
+            </div>
+            <div class="col-md-2">
+                <label for="fecha_hasta" class="form-label">Fecha hasta</label>
+                <input type="date" class="form-control" id="fecha_hasta" name="fecha_hasta" value="{{ filtros.fecha_hasta }}">
+            </div>
+            <div class="col-md-3">
+                <label for="busqueda" class="form-label">Buscar</label>
+                <input type="text" class="form-control" id="busqueda" name="busqueda" placeholder="Asunto, remitente..." value="{{ filtros.busqueda }}">
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="fas fa-search"></i> Filtrar
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Tabla de Correos -->
+    <div class="dashboard-card">
+        <div class="dashboard-card-header">
+            <div class="dashboard-card-title">
+                Lista de Correos
+                <span class="badge bg-secondary">{{ correos.paginator.count }} correos</span>
+            </div>
+        </div>
+        <div class="dashboard-card-body">
+            <div class="table-responsive">
+                <table class="correos-table">
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Remitente</th>
+                            <th>Asunto</th>
+                            <th>Estado</th>
+                            <th>Glosas</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for correo in correos %}
+                            <tr>
+                                <td>{{ correo.fecha_recepcion|date:"d/m/Y H:i" }}</td>
+                                <td>{{ correo.remitente }}</td>
+                                <td>{{ correo.asunto|truncatechars:50 }}</td>
+                                <td>
+                                    {% if correo.estado == 'PENDIENTE' %}
+                                        <span class="status-badge status-pending">Pendiente</span>
+                                    {% elif correo.estado == 'PROCESADO' %}
+                                        <span class="status-badge status-processed">Procesado</span>
+                                    {% elif correo.estado == 'ERROR' %}
+                                        <span class="status-badge status-error">Error</span>
+                                    {% elif correo.estado == 'IGNORADO' %}
+                                        <span class="status-badge status-ignored">Ignorado</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ correo.glosas_extraidas }}</td>
+                                <td>
+                                    <a href="#" class="btn btn-sm btn-outline-primary" title="Ver detalles">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    <a href="#" class="btn btn-sm btn-outline-secondary" title="Reprocesar">
+                                        <i class="fas fa-sync-alt"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-center py-4">
+                                    <p class="mb-0 text-muted">No se encontraron correos con los criterios seleccionados</p>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            {% if correos.paginator.num_pages > 1 %}
+                <nav aria-label="Paginación de correos" class="pagination">
+                    <ul class="pagination">
+                        {% if correos.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page=1{% for key, value in filtros.items %}{% if value %}&{{ key }}={{ value }}{% endif %}{% endfor %}" aria-label="Primera">
+                                    <span aria-hidden="true">&laquo;&laquo;</span>
+                                </a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ correos.previous_page_number }}{% for key, value in filtros.items %}{% if value %}&{{ key }}={{ value }}{% endif %}{% endfor %}" aria-label="Anterior">
+                                    <span aria-hidden="true">&laquo;</span>
+                                </a>
+                            </li>
+                        {% endif %}
+                        
+                        {% for num in correos.paginator.page_range %}
+                            {% if correos.number == num %}
+                                <li class="page-item active">
+                                    <span class="page-link">{{ num }}</span>
+                                </li>
+                            {% elif num > correos.number|add:"-3" and num < correos.number|add:"3" %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ num }}{% for key, value in filtros.items %}{% if value %}&{{ key }}={{ value }}{% endif %}{% endfor %}">{{ num }}</a>
+                                </li>
+                            {% endif %}
+                        {% endfor %}
+                        
+                        {% if correos.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ correos.next_page_number }}{% for key, value in filtros.items %}{% if value %}&{{ key }}={{ value }}{% endif %}{% endfor %}" aria-label="Siguiente">
+                                    <span aria-hidden="true">&raquo;</span>
+                                </a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ correos.paginator.num_pages }}{% for key, value in filtros.items %}{% if value %}&{{ key }}={{ value }}{% endif %}{% endfor %}" aria-label="Última">
+                                    <span aria-hidden="true">&raquo;&raquo;</span>
+                                </a>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Función para formatear fechas
+        function formatDate(dateStr) {
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('es-ES', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+        
+        // Botón de exportar
+        const exportBtn = document.querySelector('.btn-export');
+        if (exportBtn) {
+            exportBtn.addEventListener('click', function() {
+                alert('Funcionalidad de exportación estará disponible próximamente');
+            });
+        }
+    });
+</script>
+{% endblock %}
