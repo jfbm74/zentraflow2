@@ -13,6 +13,7 @@ from django.db import transaction
 from .models import ServicioIngesta, HistorialEjecucion, LogActividad
 from .services.ingesta_scheduler_service import IngestaSchedulerService
 from .tasks import execute_ingestion_now
+from apps.configuracion.models import EmailConfig
 
 logger = logging.getLogger(__name__)
 
@@ -37,18 +38,42 @@ class IngestaControlPanelView(LoginRequiredMixin, TemplateView):
             # Añadir información de tiempo restante
             tiempo_restante = servicio.tiempo_hasta_proxima_ejecucion()
             
-            # Estado de conexión simplificado
-            oauth_status = {'success': True, 'message': 'Conexión disponible'}
+            # Verificar estado real de la conexión
+            try:
+                config = EmailConfig.objects.get(tenant=tenant)
+                email_configured = True
+                email_connected = config.connection_status == 'conectado'
+                email_address = config.email_address
+                
+                oauth_status = {
+                    'success': email_connected,
+                    'message': 'Conexión disponible' if email_connected else 'La conexión al servidor de correo no está activa',
+                    'status': {
+                        'email_address': email_address,
+                        'oauth_authorized': True,
+                        'oauth_token_valid': email_connected
+                    }
+                }
+            except EmailConfig.DoesNotExist:
+                oauth_status = {
+                    'success': False,
+                    'message': 'No hay configuración de correo electrónico',
+                    'status': {
+                        'email_address': None,
+                        'oauth_authorized': False,
+                        'oauth_token_valid': False
+                    }
+                }
             
             context['servicio'] = servicio
             context['tiempo_restante'] = tiempo_restante
             context['oauth_status'] = oauth_status
             
-            # Obtener historial reciente
+            # Obtener historial reciente con datos reales
             historial = HistorialEjecucion.objects.filter(tenant=tenant).order_by('-fecha_inicio')[:10]
             context['historial_ejecuciones'] = historial
             
-            # Obtener actividad reciente
+            # Obtener actividad reciente con datos reales
             actividad = LogActividad.objects.filter(
                 tenant=tenant,
                 evento__in=['INGESTA_INICIADA', 'INGESTA_COMPLETADA', 'INGESTA_ERROR', 
@@ -57,10 +82,38 @@ class IngestaControlPanelView(LoginRequiredMixin, TemplateView):
             context['actividad_reciente'] = actividad
             
         except ServicioIngesta.DoesNotExist:
-            # Si no existe, crear uno por defecto
+            # Si no existe, no creamos ningún dato ficticio
             context['servicio'] = None
             context['tiempo_restante'] = "No programado"
-            context['oauth_status'] = {'success': True, 'message': 'Conexión disponible'}
+            
+            # Verificar si hay configuración de correo
+            try:
+                config = EmailConfig.objects.get(tenant=tenant)
+                email_configured = True
+                email_connected = config.connection_status == 'conectado'
+                email_address = config.email_address
+                
+                oauth_status = {
+                    'success': email_connected,
+                    'message': 'Conexión disponible' if email_connected else 'La conexión al servidor de correo no está activa',
+                    'status': {
+                        'email_address': email_address,
+                        'oauth_authorized': True,
+                        'oauth_token_valid': email_connected
+                    }
+                }
+            except EmailConfig.DoesNotExist:
+                oauth_status = {
+                    'success': False,
+                    'message': 'No hay configuración de correo electrónico',
+                    'status': {
+                        'email_address': None,
+                        'oauth_authorized': False,
+                        'oauth_token_valid': False
+                    }
+                }
+            
+            context['oauth_status'] = oauth_status
             context['historial_ejecuciones'] = []
             context['actividad_reciente'] = []
         

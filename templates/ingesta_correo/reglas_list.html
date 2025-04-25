@@ -211,7 +211,7 @@
 <div class="page-title">
     <h1>Reglas de Filtrado</h1>
     <div>
-        <button id="btnAddRule" class="btn-action">
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#ruleModal">
             <i class="fas fa-plus-circle"></i> Crear Nueva Regla
         </button>
     </div>
@@ -316,7 +316,7 @@
             </div>
             <h3>No hay reglas de filtrado</h3>
             <p class="empty-rules-text">Las reglas de filtrado te permiten procesar automáticamente los correos entrantes según criterios específicos.</p>
-            <button id="btnEmptyAddRule" class="btn-action">
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#ruleModal">
                 <i class="fas fa-plus-circle"></i> Crear Primera Regla
             </button>
         </div>
@@ -447,10 +447,10 @@
                 </form>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn-secondary-action" data-bs-dismiss="modal">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
                     <i class="fas fa-times"></i> Cancelar
                 </button>
-                <button type="button" class="btn-action" id="btnSaveRule">
+                <button type="button" class="btn btn-primary" id="btnSaveRule">
                     <i class="fas fa-save"></i> Guardar Regla
                 </button>
             </div>
@@ -470,7 +470,7 @@
                 <p>¿Estás seguro de que deseas eliminar esta regla? Esta acción no se puede deshacer.</p>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn-secondary-action" data-bs-dismiss="modal">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
                     <i class="fas fa-times"></i> Cancelar
                 </button>
                 <button type="button" class="btn btn-danger" id="btnConfirmDelete">
@@ -485,4 +485,186 @@
 {% block extra_js %}
 <script src="{% static 'js/ingesta_correo/reglas_filtrado.js' %}"></script>
 <script src="{% static 'js/ingesta_correo/reglas_test.js' %}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Documento listo, configurando evento para botón guardar');
+    
+    // Variable para controlar si estamos editando o creando
+    let isEditing = false;
+    
+    // Función para resetear formulario (solo para nueva regla)
+    function resetForm() {
+        const ruleForm = document.getElementById('ruleForm');
+        if (ruleForm) ruleForm.reset();
+        
+        const ruleId = document.getElementById('ruleId');
+        if (ruleId) ruleId.value = '';
+        
+        const ruleModalLabel = document.getElementById('ruleModalLabel');
+        if (ruleModalLabel) ruleModalLabel.textContent = 'Nueva Regla de Filtrado';
+        
+        const rulePriority = document.getElementById('rulePriority');
+        if (rulePriority) rulePriority.value = '10';
+        
+        // Ocultar sección de prueba
+        const testRuleSection = document.getElementById('testRuleSection');
+        if (testRuleSection) testRuleSection.style.display = 'none';
+    }
+    
+    // Evento para controlar el formulario cuando se abre el modal
+    const ruleModal = document.getElementById('ruleModal');
+    if (ruleModal) {
+        ruleModal.addEventListener('show.bs.modal', function(event) {
+            console.log('Modal abriéndose');
+            
+            // Solo resetear el formulario si no estamos editando
+            if (!isEditing) {
+                console.log('Creando nueva regla, reseteando formulario');
+                resetForm();
+            } else {
+                console.log('Editando regla existente, manteniendo datos');
+                // No hacemos nada, los datos ya están cargados por editRule()
+            }
+        });
+        
+        // Cuando se cierra el modal, reseteamos el modo edición
+        ruleModal.addEventListener('hidden.bs.modal', function() {
+            isEditing = false;
+        });
+    }
+    
+    // Sobreescribir la función global editRule para marcar que estamos editando
+    const originalEditRule = window.editRule;
+    window.editRule = function(event, ruleId) {
+        // Marcar que estamos en modo edición
+        isEditing = true;
+        
+        // Llamar a la función original
+        originalEditRule(event, ruleId);
+    };
+    
+    // Configurar evento manual para el botón guardar regla
+    const btnSaveRule = document.getElementById('btnSaveRule');
+    if (btnSaveRule) {
+        btnSaveRule.addEventListener('click', function() {
+            console.log('Botón guardar regla clickeado');
+            
+            // Validar el formulario manualmente
+            const ruleName = document.getElementById('ruleName').value;
+            const ruleField = document.getElementById('ruleField').value;
+            const ruleCondition = document.getElementById('ruleCondition').value;
+            const ruleValue = document.getElementById('ruleValue').value;
+            const ruleAction = document.getElementById('ruleAction').value;
+            
+            // Validación básica
+            if (!ruleName) {
+                showErrorMessage('El nombre de la regla es obligatorio');
+                return;
+            }
+            
+            if (!ruleField) {
+                showErrorMessage('Debe seleccionar un campo');
+                return;
+            }
+            
+            if (!ruleCondition) {
+                showErrorMessage('Debe seleccionar una condición');
+                return;
+            }
+            
+            if (!ruleValue) {
+                showErrorMessage('Debe proporcionar un valor');
+                return;
+            }
+            
+            if (!ruleAction) {
+                showErrorMessage('Debe seleccionar una acción');
+                return;
+            }
+            
+            // Obtener datos del formulario
+            const ruleId = document.getElementById('ruleId').value;
+            const ruleData = {
+                nombre: ruleName,
+                campo: ruleField,
+                condicion: ruleCondition,
+                valor: ruleValue,
+                accion: ruleAction,
+                prioridad: document.getElementById('rulePriority').value,
+                activa: document.getElementById('ruleActive').checked
+            };
+            
+            // CSRF token
+            const csrftoken = document.querySelector('input[name="csrfmiddlewaretoken"]').value;
+            
+            // Determinar si es creación o edición
+            const isEdit = ruleId !== '';
+            const url = isEdit ? `/ingesta-correo/api/reglas/${ruleId}/` : '/ingesta-correo/api/reglas/';
+            const method = isEdit ? 'PUT' : 'POST';
+            
+            // Enviar solicitud
+            fetch(url, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrftoken
+                },
+                body: JSON.stringify(ruleData)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Error en la respuesta del servidor');
+                }
+                return response.json();
+            })
+            .then(data => {
+                // Mostrar mensaje de éxito
+                showSuccessMessage(isEdit ? 'Regla actualizada con éxito' : 'Regla creada con éxito');
+                
+                // Cerrar modal y recargar página
+                const modalInstance = bootstrap.Modal.getInstance(ruleModal);
+                if (modalInstance) {
+                    modalInstance.hide();
+                }
+                
+                setTimeout(function() {
+                    window.location.reload();
+                }, 1000);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showErrorMessage('Ha ocurrido un error al procesar la solicitud');
+            });
+        });
+    }
+    
+    // Función para mostrar mensajes de éxito
+    function showSuccessMessage(message) {
+        const successAlert = document.getElementById('successAlert');
+        const successMessage = document.getElementById('successMessage');
+        
+        if (successMessage) successMessage.textContent = message;
+        if (successAlert) {
+            successAlert.style.display = 'block';
+            setTimeout(function() {
+                successAlert.style.display = 'none';
+            }, 3000);
+        }
+    }
+    
+    // Función para mostrar mensajes de error
+    function showErrorMessage(message) {
+        const errorAlert = document.getElementById('errorAlert');
+        const errorMessage = document.getElementById('errorMessage');
+        
+        if (errorMessage) errorMessage.textContent = message;
+        if (errorAlert) {
+            errorAlert.style.display = 'block';
+            setTimeout(function() {
+                errorAlert.style.display = 'none';
+            }, 5000);
+        }
+    }
+});
+</script>
 {% endblock %}

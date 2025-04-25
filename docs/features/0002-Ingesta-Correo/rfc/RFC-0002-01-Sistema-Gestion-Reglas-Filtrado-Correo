@@ -30,3 +30,186 @@ Desarrollar un sistema completo para la creación y gestión de reglas de filtra
 -   Debe existir confirmación antes de eliminar reglas
 -   El cambio de estado (activo/inactivo) debe reflejarse inmediatamente
 -   La interfaz debe ser intuitiva y proporcionar retroalimentación clara
+
+### Mejoras Propuestas y Recomendaciones Adicionales
+
+#### Ampliación de Funcionalidades Básicas
+
+1.  **Acciones Extendidas**:
+    -   Mover correos a carpetas específicas o etiquetarlos
+    -   Reenviar automáticamente a otros usuarios/departamentos
+    -   Ejecutar procesamiento específico según tipo de documento
+    -   Enviar notificaciones personalizadas
+
+2.  **Reglas Compuestas**:
+    -   Permitir la creación de condiciones múltiples con operadores lógicos (Y/O)
+    -   Ejemplo: "Si (remitente es X **Y** asunto contiene Y) **O** (contiene adjuntos PDF)"
+    -   Interfaz visual para construir estas condiciones complejas
+
+3.  **Excepciones y Anulaciones**:
+    -   Definir excepciones a reglas generales
+    -   Establecer reglas de mayor prioridad que puedan anular otras
+
+#### Gestión Avanzada
+
+4.  **Historial y Auditoría**:
+    -   Registro detallado de qué reglas se aplicaron a cada correo
+    -   Timestamp y usuario que creó/modificó cada regla
+    -   Visualización de estadísticas de aplicación de reglas
+
+5.  **Temporalidad**:
+    -   Reglas con fecha de inicio y caducidad
+    -   Reglas que se activan solo en ciertos días/horarios
+    -   Reglas estacionales (por ejemplo, para campañas específicas)
+
+6.  **Importación/Exportación**:
+    -   Exportar reglas en formato JSON/YAML
+    -   Importar configuraciones entre diferentes tenants
+    -   Plantillas predefinidas para casos de uso comunes
+
+#### Mejoras de UX/UI
+
+7.  **Panel de Análisis**:
+    -   Métricas sobre reglas más utilizadas
+    -   Identificación de reglas redundantes o nunca activadas
+    -   Sugerencias para optimizar reglas basadas en patrones detectados
+
+8.  **Simulador de Reglas**:
+    -   Interfaz para probar reglas contra correos de ejemplo
+    -   Visualizar paso a paso cómo se evalúan las reglas
+    -   Estimación de impacto al añadir/modificar reglas
+
+#### Integración con el Sistema Existente
+
+9.  **Flujo de Procesamiento**:
+    -   Diagrama de flujo mostrando cómo se integran las reglas con el proceso de ingesta actual
+    -   Puntos de integración con el sistema de extracción de glosas
+    -   Manejo de casos límite y errores
+
+10. **Rendimiento y Escalabilidad**:
+    -   Optimización para evaluar reglas rápidamente sin impactar el rendimiento
+    -   Caché de resultados para reglas frecuentes
+    -   Estrategia para manejar grandes volúmenes de reglas y correos
+
+### Ejemplos de Reglas Típicas
+
+1. **Regla de Proveedor Específico**:
+   - Si el remitente contiene "@proveedor.com" y el asunto contiene "factura"
+   - Acción: Procesar automáticamente y etiquetar como "Facturas Proveedor"
+
+2. **Regla de Exclusión**:
+   - Si el asunto contiene "publicidad" o "newsletter"
+   - Acción: Ignorar procesamiento
+
+3. **Regla de Documentos Específicos**:
+   - Si contiene adjunto PDF y el nombre contiene "INF-"
+   - Acción: Marcar alta prioridad y notificar al departamento
+
+### Próximos Pasos
+
+1. Definir la arquitectura detallada del sistema de reglas
+2. Diseñar los modelos de datos necesarios
+3. Crear mockups de la interfaz de usuario para el sistema de gestión
+4. Implementar un prototipo con funcionalidades básicas
+5. Realizar pruebas con usuarios para validar la UX
+
+### Plan de Implementación por Fases
+
+Para facilitar el desarrollo incremental y poder entregar valor rápidamente, se recomienda dividir la implementación en las siguientes fases:
+
+#### Fase 1: Fundamentos del Sistema de Reglas (MVP)
+
+**Objetivo**: Establecer la infraestructura básica para crear y aplicar reglas simples.
+
+1. **Modelos de datos**:
+   - Definir esquema para reglas (modelo `ReglaFiltrado`)
+   - Relaciones con modelos existentes (Tenant, Usuario)
+   - Índices para búsqueda eficiente
+
+2. **Lógica de evaluación básica**:
+   - Motor de evaluación de reglas simples
+   - Integración con el flujo actual de ingesta de correos
+   - Logging básico de aplicación de reglas
+
+3. **Interfaz administrativa básica**:
+   - Formulario CRUD para reglas simples
+   - Listado de reglas con ordenación básica
+   - Activación/desactivación de reglas
+
+**Entregable**: Sistema funcional que permite crear reglas básicas (una condición) y aplicarlas a correos entrantes.
+
+#### Fase 2: Gestión y Organización de Reglas
+
+**Objetivo**: Mejorar la gestión y la capacidad organizativa del sistema de reglas.
+
+1. **Mejoras organizativas**:
+   - Implementación de prioridades
+   - Agrupación de reglas por categorías
+   - Duplicación de reglas existentes
+
+2. **Mejoras de interfaz**:
+   - Reordenamiento drag-and-drop de prioridades
+   - Filtros y búsqueda en el listado
+   - Interfaz mejorada con feedback visual
+
+3. **Historial básico**:
+   - Registro de creación/modificación
+   - Contadores de uso de reglas
+   - Visualización básica de estadísticas
+
+**Entregable**: Sistema que permite organizar reglas de manera eficiente, con mejor experiencia de usuario.
+
+#### Fase 3: Reglas Avanzadas y Condiciones Compuestas
+
+**Objetivo**: Ampliar las capacidades del sistema para manejar lógica más compleja.
+
+1. **Condiciones compuestas**:
+   - Implementación de operadores lógicos (Y/O)
+   - Grupos de condiciones anidadas
+   - Constructor visual de reglas complejas
+
+2. **Acciones extendidas**:
+   - Acciones personalizadas y configurables
+   - Etiquetado y categorización automáticos
+   - Notificaciones basadas en reglas
+
+3. **Pruebas y simulación**:
+   - Interfaz para probar reglas contra ejemplos
+   - Visualización del proceso de evaluación
+   - Detección de conflictos entre reglas
+
+**Entregable**: Sistema con capacidades avanzadas para crear reglas complejas y probarlas.
+
+#### Fase 4: Optimización y Características Empresariales
+
+**Objetivo**: Completar el sistema con características de nivel empresarial y optimizaciones.
+
+1. **Temporalidad y programación**:
+   - Reglas con fechas de inicio/fin
+   - Activación programada (días/horas)
+   - Reglas recurrentes
+
+2. **Importación/exportación**:
+   - Exportación en JSON/YAML
+   - Importación y migración de reglas
+   - Plantillas predefinidas
+
+3. **Rendimiento y escalabilidad**:
+   - Optimización de evaluación
+   - Caché de resultados frecuentes
+   - Análisis de rendimiento y ajustes
+
+4. **Análisis avanzado**:
+   - Dashboard con métricas de uso
+   - Identificación de reglas redundantes
+   - Sugerencias de optimización basadas en patrones
+
+**Entregable**: Sistema completo, optimizado y con todas las características necesarias para entornos empresariales.
+
+### Consideraciones para la Implementación
+
+- Cada fase debe incluir pruebas unitarias y de integración
+- Al final de cada fase, realizar una revisión con usuarios clave
+- Mantener compatibilidad hacia atrás entre fases
+- Documentar APIs y modelos para facilitar la integración con otros sistemas
+- Considerar la migración de datos si es necesario al evolucionar los modelos

@@ -255,7 +255,9 @@ class IngestaSchedulerService:
             return {
                 'success': True,
                 'message': f"Intervalo actualizado a {intervalo_minutos} minutos",
-                'servicio': servicio
+                'servicio_id': servicio.id, 
+                'intervalo_minutos': servicio.intervalo_minutos,
+                'proxima_ejecucion': servicio.proxima_ejecucion.isoformat() if servicio.proxima_ejecucion else None
             }
             
         except ServicioIngesta.DoesNotExist:

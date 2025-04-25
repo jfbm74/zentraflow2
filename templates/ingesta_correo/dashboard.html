@@ -10,65 +10,93 @@
 {% block content %}
 <div class="container-fluid p-0">
     <!-- Título de la página -->
-    <div class="page-title d-flex justify-content-between align-items-center mb-4">
-        <h1><i class="fas fa-envelope me-2 text-primary"></i> Dashboard de Ingesta de Correo</h1>
+    <div class="page-title d-flex justify-content-between align-items-center mb-3">
+        <h1 class="dashboard-title"><i class="fas fa-envelope me-2"></i> Dashboard de Ingesta de Correo</h1>
         <div class="d-flex gap-2">
             <button id="btnRefrescarDatos" class="btn-secondary-action">
                 <i class="fas fa-sync-alt"></i> Actualizar
             </button>
+            <a href="{% url 'ingesta_correo:reglas' %}" class="btn-secondary-action">
+                <i class="fas fa-filter"></i> Reglas de Filtrado
+            </a>
             <a href="{% url 'ingesta_correo:control_panel' %}" class="btn-action">
-                <i class="fas fa-cogs"></i> Configuración
+                <i class="fas fa-cog"></i> Panel de Control
             </a>
         </div>
     </div>
 
-    <!-- Estado del servicio -->
-    <div class="dashboard-card mb-4">
-        <div class="dashboard-card-header">
-            <h2><i class="fas fa-server me-2"></i> Estado del Servicio</h2>
-            <span class="dashboard-card-badge {% if system_status.servicio_activo %}bg-success{% else %}bg-danger{% endif %}" id="estadoServicio">
-                {{ system_status.servicio_activo|yesno:"ACTIVO,INACTIVO" }}
-            </span>
-        </div>
-        <div class="dashboard-card-body">
-            <div class="service-info-grid">
-                <div class="service-info-item">
-                    <div class="service-info-label">Cuenta de correo</div>
-                    <div class="service-info-value" id="emailConfig">{{ system_status.email_address|default:"No configurado" }}</div>
-                </div>
-                <div class="service-info-item">
-                    <div class="service-info-label">Estado de conexión</div>
-                    <div class="service-info-value">
-                        <span class="status-dot {% if system_status.email_connected %}status-success{% else %}status-danger{% endif %}"></span>
-                        {{ system_status.email_connected|yesno:"Conectado,Desconectado" }}
+    <!-- Contenedor para el estado del servicio con más espacio -->
+    <div class="service-status-wrapper mb-5">
+        <!-- Estado del servicio - Ahora colapsable -->
+        <div class="dashboard-card">
+            <div class="dashboard-card-header collapsible-header" id="serviceStatusHeader">
+                <h2><i class="fas fa-server me-2"></i> Estado del Servicio <i class="fas fa-chevron-down toggle-icon"></i></h2>
+                <span class="dashboard-card-badge {% if system_status.servicio_activo %}bg-success{% else %}bg-danger{% endif %}" id="estadoServicio">
+                    {{ system_status.servicio_activo|yesno:"ACTIVO,INACTIVO" }}
+                </span>
+            </div>
+            <div class="dashboard-card-body collapsible-body" id="serviceStatusBody">
+                {% if not system_status.servicio_activo %}
+                <div class="service-inactive-message">
+                    <div class="alert alert-info mb-0">
+                        <h4 class="alert-heading"><i class="fas fa-info-circle me-2"></i>Servicio de Ingesta Desactivado</h4>
+                        <p class="mb-3">Para comenzar a procesar correos automáticamente, necesitas:</p>
+                        <ol class="mb-3">
+                            <li>Configurar una cuenta de correo válida</li>
+                            <li>Verificar la conexión al servidor de correo</li>
+                            <li>Activar el servicio de ingesta en el panel de configuración</li>
+                        </ol>
+                        <div class="d-flex gap-2">
+                            <a href="{% url 'configuracion' %}#correo" class="btn btn-primary">
+                                <i class="fas fa-envelope me-2"></i>Configurar Correo
+                            </a>
+                            <a href="{% url 'ingesta_correo:control_panel' %}" class="btn btn-secondary">
+                                <i class="fas fa-cogs me-2"></i>Panel de Control
+                            </a>
+                        </div>
                     </div>
                 </div>
-                <div class="service-info-item">
-                    <div class="service-info-label">Última ejecución</div>
-                    <div class="service-info-value" id="ultimaEjecucion">
-                        {% if system_status.ultima_verificacion %}
-                            {{ system_status.ultima_verificacion|date:"d/m/Y H:i" }}
-                        {% else %}
-                            No hay datos
-                        {% endif %}
+                {% else %}
+                <div class="service-info-grid">
+                    <div class="service-info-item">
+                        <div class="service-info-label">Cuenta de correo</div>
+                        <div class="service-info-value" id="emailConfig">{{ system_status.email_address|default:"No configurado" }}</div>
+                    </div>
+                    <div class="service-info-item">
+                        <div class="service-info-label">Estado de conexión</div>
+                        <div class="service-info-value">
+                            <span class="status-dot {% if system_status.email_connected %}status-success{% else %}status-danger{% endif %}"></span>
+                            {{ system_status.email_connected|yesno:"Conectado,Desconectado" }}
+                        </div>
+                    </div>
+                    <div class="service-info-item">
+                        <div class="service-info-label">Última ejecución</div>
+                        <div class="service-info-value" id="ultimaEjecucion">
+                            {% if system_status.ultima_verificacion %}
+                                {{ system_status.ultima_verificacion|date:"d/m/Y H:i" }}
+                            {% else %}
+                                No hay datos
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="service-info-item">
+                        <div class="service-info-label">Estado último proceso</div>
+                        <div class="service-info-value">
+                            {% if system_status.ultima_ejecucion %}
+                                <span class="status-badge 
+                                {% if system_status.ultima_ejecucion.estado == 'exitoso' %}status-success
+                                {% elif system_status.ultima_ejecucion.estado == 'error' %}status-danger
+                                {% elif system_status.ultima_ejecucion.estado == 'parcial' %}status-warning
+                                {% else %}status-info{% endif %}">
+                                    {{ system_status.ultima_ejecucion.estado|upper }}
+                                </span>
+                            {% else %}
+                                No hay datos
+                            {% endif %}
+                        </div>
                     </div>
                 </div>
-                <div class="service-info-item">
-                    <div class="service-info-label">Estado último proceso</div>
-                    <div class="service-info-value">
-                        {% if system_status.ultima_ejecucion %}
-                            <span class="status-badge 
-                            {% if system_status.ultima_ejecucion.estado == 'exitoso' %}status-success
-                            {% elif system_status.ultima_ejecucion.estado == 'error' %}status-danger
-                            {% elif system_status.ultima_ejecucion.estado == 'parcial' %}status-warning
-                            {% else %}status-info{% endif %}">
-                                {{ system_status.ultima_ejecucion.estado|upper }}
-                            </span>
-                        {% else %}
-                            No hay datos
-                        {% endif %}
-                    </div>
-                </div>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -253,11 +281,11 @@
         <a href="{% url 'ingesta_correo:correos_list' %}" class="btn-secondary-action">
             <i class="fas fa-list"></i> Ver Todos los Correos
         </a>
-        <a href="{% url 'ingesta_correo:historial_ingesta' %}" class="btn-secondary-action">
-            <i class="fas fa-history"></i> Historial de Ejecuciones
+        <a href="{% url 'ingesta_correo:control_panel' %}" class="btn-secondary-action">
+            <i class="fas fa-cogs"></i> Panel de Control
         </a>
         <a href="{% url 'configuracion' %}#correo" class="btn-action">
-            <i class="fas fa-cogs"></i> Configuración de Conexión
+            <i class="fas fa-envelope"></i> Configuración de Correo
         </a>
     </div>
 </div>
@@ -372,6 +400,32 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
     });
+    
+    // Funcionalidad para hacer colapsable el panel de Estado del Servicio
+    const serviceStatusHeader = document.getElementById('serviceStatusHeader');
+    const serviceStatusBody = document.getElementById('serviceStatusBody');
+    
+    // Inicializar el panel como expandido - sin altura definida
+    serviceStatusBody.classList.remove('collapsed');
+    
+    // Función para alternar el estado colapsado
+    function toggleServiceStatus(event) {
+        // Evitar que se propague el evento a elementos padres
+        event.stopPropagation();
+        
+        serviceStatusHeader.classList.toggle('collapsed');
+        
+        if (serviceStatusBody.classList.contains('collapsed')) {
+            // Expandir el panel
+            serviceStatusBody.classList.remove('collapsed');
+        } else {
+            // Colapsar el panel
+            serviceStatusBody.classList.add('collapsed');
+        }
+    }
+    
+    // Agregar evento de clic al encabezado para colapsar/expandir
+    serviceStatusHeader.addEventListener('click', toggleServiceStatus);
     
     // Actualizar período del gráfico
     document.getElementById('periodSelect').addEventListener('change', function() {

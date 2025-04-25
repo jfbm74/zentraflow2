@@ -1,0 +1,452 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}
+{% if es_creacion %}
+    Crear nueva regla de filtrado
+{% else %}
+    Editar regla: {{ regla.nombre }}
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Inicio</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'ingesta_correo:dashboard' %}">Ingesta</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'ingesta_correo:reglas' %}">Reglas de filtrado</a></li>
+                    <li class="breadcrumb-item active">
+                        {% if es_creacion %}Crear regla{% else %}Editar regla{% endif %}
+                    </li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header {% if es_creacion %}bg-primary{% else %}bg-success{% endif %} text-white">
+                    <h5 class="card-title mb-0">
+                        {% if es_creacion %}
+                            <i class="fas fa-plus-circle me-2"></i>Crear nueva regla de filtrado
+                        {% else %}
+                            <i class="fas fa-edit me-2"></i>Editar regla: {{ regla.nombre }}
+                        {% endif %}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if form.errors %}
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>Por favor corrige los errores indicados:</strong>
+                        <ul class="mb-0 mt-2">
+                            {% for field in form %}
+                                {% for error in field.errors %}
+                                    <li>{{ field.label }}: {{ error }}</li>
+                                {% endfor %}
+                            {% endfor %}
+                            {% for error in form.non_field_errors %}
+                                <li>{{ error }}</li>
+                            {% endfor %}
+                            {% if formset.errors %}
+                                <li>Hay errores en las condiciones de la regla compuesta.</li>
+                            {% endif %}
+                        </ul>
+                    </div>
+                    {% endif %}
+
+                    <form method="post" id="reglaForm">
+                        {% csrf_token %}
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="{{ form.nombre.id_for_label }}" class="form-label">Nombre</label>
+                                {{ form.nombre }}
+                                <div class="form-text">Nombre descriptivo para la regla</div>
+                                {% if form.nombre.errors %}
+                                <div class="invalid-feedback d-block">{{ form.nombre.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-3">
+                                <label for="{{ form.prioridad.id_for_label }}" class="form-label">Prioridad</label>
+                                {{ form.prioridad }}
+                                <div class="form-text">Orden de evaluación (menor número = mayor prioridad)</div>
+                                {% if form.prioridad.errors %}
+                                <div class="invalid-feedback d-block">{{ form.prioridad.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label d-block">Estado</label>
+                                <div class="form-check form-switch mt-2">
+                                    {{ form.activa }}
+                                    <label class="form-check-label" for="{{ form.activa.id_for_label }}">Regla activa</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-12">
+                                <label for="{{ form.descripcion.id_for_label }}" class="form-label">Descripción</label>
+                                {{ form.descripcion }}
+                                <div class="form-text">Descripción detallada del propósito de la regla</div>
+                                {% if form.descripcion.errors %}
+                                <div class="invalid-feedback d-block">{{ form.descripcion.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="{{ form.categoria.id_for_label }}" class="form-label">Categoría</label>
+                                {{ form.categoria }}
+                                <div class="form-text">Grupo al que pertenece esta regla</div>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="{{ form.fecha_inicio.id_for_label }}" class="form-label">Fecha inicio</label>
+                                {{ form.fecha_inicio }}
+                                <div class="form-text">Opcional: Desde cuándo aplicar</div>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="{{ form.fecha_fin.id_for_label }}" class="form-label">Fecha fin</label>
+                                {{ form.fecha_fin }}
+                                <div class="form-text">Opcional: Hasta cuándo aplicar</div>
+                            </div>
+                        </div>
+
+                        <!-- Tipo de regla -->
+                        <div class="mb-4">
+                            <div class="form-check form-switch">
+                                {{ form.es_compuesta }}
+                                <label class="form-check-label" for="{{ form.es_compuesta.id_for_label }}">
+                                    Regla compuesta (múltiples condiciones)
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Campos para regla simple -->
+                        <div id="simple-rule-fields" class="mb-4">
+                            <div class="card">
+                                <div class="card-header bg-light">
+                                    <h6 class="mb-0">Condición simple</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-4">
+                                            <label for="{{ form.campo.id_for_label }}" class="form-label">Campo</label>
+                                            {{ form.campo }}
+                                            {% if form.campo.errors %}
+                                            <div class="invalid-feedback d-block">{{ form.campo.errors.0 }}</div>
+                                            {% endif %}
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label for="{{ form.condicion.id_for_label }}" class="form-label">Condición</label>
+                                            {{ form.condicion }}
+                                            {% if form.condicion.errors %}
+                                            <div class="invalid-feedback d-block">{{ form.condicion.errors.0 }}</div>
+                                            {% endif %}
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label for="{{ form.valor.id_for_label }}" class="form-label">Valor</label>
+                                            {{ form.valor }}
+                                            {% if form.valor.errors %}
+                                            <div class="invalid-feedback d-block">{{ form.valor.errors.0 }}</div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Campos para regla compuesta -->
+                        <div id="compound-rule-fields" class="mb-4">
+                            <div class="card">
+                                <div class="card-header bg-light">
+                                    <h6 class="mb-0">Condiciones múltiples</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <label for="{{ form.operador_logico.id_for_label }}" class="form-label">Operador lógico</label>
+                                        {{ form.operador_logico }}
+                                        <div class="form-text">Cómo combinar las condiciones</div>
+                                    </div>
+                                    
+                                    <div id="condiciones-formset">
+                                        {{ formset.management_form }}
+                                        <div class="formset-items">
+                                            {% for condicion_form in formset %}
+                                            <div class="condicion-form mb-3">
+                                                <div class="card">
+                                                    <div class="card-header bg-light">
+                                                        <div class="d-flex justify-content-between align-items-center">
+                                                            <h6 class="mb-0">Condición #{{ forloop.counter }}</h6>
+                                                            {% if forloop.counter > 1 %}
+                                                            <button type="button" class="btn btn-sm btn-danger remove-condition">
+                                                                <i class="fas fa-trash"></i>
+                                                            </button>
+                                                            {% endif %}
+                                                        </div>
+                                                    </div>
+                                                    <div class="card-body">
+                                                        <div class="row">
+                                                            <div class="col-md-4">
+                                                                <label class="form-label">Campo</label>
+                                                                {{ condicion_form.campo }}
+                                                                {{ condicion_form.id }}
+                                                                {{ condicion_form.orden }}
+                                                                {% if condicion_form.DELETE %}
+                                                                <div style="display:none">{{ condicion_form.DELETE }}</div>
+                                                                {% endif %}
+                                                            </div>
+                                                            <div class="col-md-4">
+                                                                <label class="form-label">Condición</label>
+                                                                {{ condicion_form.condicion }}
+                                                            </div>
+                                                            <div class="col-md-4">
+                                                                <label class="form-label">Valor</label>
+                                                                {{ condicion_form.valor }}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+                                        
+                                        <button type="button" id="add-condition" class="btn btn-sm btn-primary">
+                                            <i class="fas fa-plus"></i> Añadir condición
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Sección de acción -->
+                        <div class="mb-4">
+                            <div class="card">
+                                <div class="card-header bg-light">
+                                    <h6 class="mb-0">Acción a realizar</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <label for="{{ form.accion.id_for_label }}" class="form-label">Acción</label>
+                                            {{ form.accion }}
+                                            <div class="form-text">¿Qué hacer cuando se cumpla la condición?</div>
+                                            {% if form.accion.errors %}
+                                            <div class="invalid-feedback d-block">{{ form.accion.errors.0 }}</div>
+                                            {% endif %}
+                                            {{ form.parametros_accion }}
+                                        </div>
+                                        <div class="col-md-6" id="accion-params-container">
+                                            <!-- Aquí se cargarán los campos adicionales según la acción seleccionada -->
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-end mt-4">
+                            <a href="{% url 'ingesta_correo:reglas' %}" class="btn btn-secondary me-2">
+                                <i class="fas fa-times me-1"></i> Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-1"></i> 
+                                {% if es_creacion %}Crear regla{% else %}Guardar cambios{% endif %}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        // Manejo de campos basados en el tipo de regla
+        function toggleRuleFields() {
+            var esCompuesta = $('#id_es_compuesta').is(':checked');
+            if (esCompuesta) {
+                $('#compound-rule-fields').show();
+                $('#simple-rule-fields').hide();
+            } else {
+                $('#compound-rule-fields').hide();
+                $('#simple-rule-fields').show();
+            }
+        }
+        
+        // Inicializar
+        toggleRuleFields();
+        
+        // Toggle cuando cambia el switch de tipo de regla
+        $('#id_es_compuesta').change(toggleRuleFields);
+        
+        // Manejo del formset de condiciones
+        var condicionesFormset = $('#condiciones-formset');
+        var totalFormsInput = $('#id_condicionregla_set-TOTAL_FORMS');
+        var formCount = parseInt(totalFormsInput.val());
+        
+        // Añadir nueva condición
+        $('#add-condition').click(function() {
+            var newForm = $('.condicion-form:first').clone(true);
+            
+            // Actualizar IDs y nombres
+            newForm.find(':input').each(function() {
+                var name = $(this).attr('name');
+                if (name) {
+                    name = name.replace('-0-', '-' + formCount + '-');
+                    $(this).attr('name', name);
+                }
+                
+                var id = $(this).attr('id');
+                if (id) {
+                    id = id.replace('-0-', '-' + formCount + '-');
+                    $(this).attr('id', id);
+                }
+                
+                // Limpiar valores
+                if (!$(this).hasClass('keep-value')) {
+                    $(this).val('');
+                }
+            });
+            
+            // Actualizar etiquetas
+            newForm.find('label').each(function() {
+                var forAttr = $(this).attr('for');
+                if (forAttr) {
+                    forAttr = forAttr.replace('-0-', '-' + formCount + '-');
+                    $(this).attr('for', forAttr);
+                }
+            });
+            
+            // Actualizar título de la condición
+            newForm.find('h6').text('Condición #' + (formCount + 1));
+            
+            // Asegurar que el botón eliminar sea visible
+            newForm.find('.remove-condition').show();
+            
+            // Añadir al DOM
+            $('.formset-items').append(newForm);
+            
+            // Incrementar contador
+            formCount++;
+            totalFormsInput.val(formCount);
+        });
+        
+        // Eliminar condición
+        $('.remove-condition').click(function() {
+            var condicionForm = $(this).closest('.condicion-form');
+            var deleteInput = condicionForm.find('input[name$="-DELETE"]');
+            
+            if (deleteInput.length) {
+                // Si existe el input DELETE (para formas existentes), marcarlo
+                deleteInput.prop('checked', true);
+                condicionForm.hide();
+            } else {
+                // Si es una forma nueva, eliminarla directamente
+                condicionForm.remove();
+                
+                // Reindexar las formas restantes
+                $('.condicion-form').each(function(index) {
+                    $(this).find('h6').text('Condición #' + (index + 1));
+                });
+                
+                // Actualizar contador
+                formCount--;
+                totalFormsInput.val(formCount);
+            }
+        });
+        
+        // Manejo de parámetros adicionales basados en la acción seleccionada
+        $('#id_accion').change(function() {
+            var accion = $(this).val();
+            var parametrosContainer = $('#accion-params-container');
+            
+            // Limpiar contenedor
+            parametrosContainer.empty();
+            
+            // Agregar campos específicos según la acción
+            switch (accion) {
+                case 'MOVER_CARPETA':
+                    parametrosContainer.append(`
+                        <label class="form-label">Carpeta destino</label>
+                        <input type="text" class="form-control" id="param_carpeta" 
+                               placeholder="Nombre de la carpeta" value="">
+                        <div class="form-text">Carpeta donde se moverá el correo</div>
+                    `);
+                    break;
+                case 'ASIGNAR_ETIQUETA':
+                    parametrosContainer.append(`
+                        <label class="form-label">Etiqueta</label>
+                        <input type="text" class="form-control" id="param_etiqueta" 
+                               placeholder="Nombre de la etiqueta" value="">
+                        <div class="form-text">Etiqueta que se aplicará al correo</div>
+                    `);
+                    break;
+                case 'REDIRIGIR':
+                    parametrosContainer.append(`
+                        <label class="form-label">Dirección de correo</label>
+                        <input type="email" class="form-control" id="param_email" 
+                               placeholder="correo@ejemplo.com" value="">
+                        <div class="form-text">Correo al que se redirigirá</div>
+                    `);
+                    break;
+            }
+            
+            // Aplicar valores existentes si hay
+            if ($('#id_parametros_accion').val()) {
+                try {
+                    var params = JSON.parse($('#id_parametros_accion').val());
+                    
+                    switch (accion) {
+                        case 'MOVER_CARPETA':
+                            $('#param_carpeta').val(params.carpeta || '');
+                            break;
+                        case 'ASIGNAR_ETIQUETA':
+                            $('#param_etiqueta').val(params.etiqueta || '');
+                            break;
+                        case 'REDIRIGIR':
+                            $('#param_email').val(params.email || '');
+                            break;
+                    }
+                } catch (e) {
+                    console.error('Error al parsear parámetros JSON:', e);
+                }
+            }
+        });
+        
+        // Trigger para cargar parámetros iniciales
+        $('#id_accion').trigger('change');
+        
+        // Guardar parámetros adicionales en el campo oculto
+        $('#reglaForm').submit(function() {
+            var accion = $('#id_accion').val();
+            var params = {};
+            
+            switch (accion) {
+                case 'MOVER_CARPETA':
+                    params.carpeta = $('#param_carpeta').val();
+                    break;
+                case 'ASIGNAR_ETIQUETA':
+                    params.etiqueta = $('#param_etiqueta').val();
+                    break;
+                case 'REDIRIGIR':
+                    params.email = $('#param_email').val();
+                    break;
+            }
+            
+            if (Object.keys(params).length > 0) {
+                $('#id_parametros_accion').val(JSON.stringify(params));
+            }
+            
+            return true;
+        });
+    });
+</script>
+{% endblock %} 

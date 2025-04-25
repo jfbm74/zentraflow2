@@ -19,6 +19,9 @@ urlpatterns = [
     # Incluir URLs de ingesta programada
     path('', include('apps.ingesta_correo.urls_ingesta')),
     
+    # Incluir URLs de reglas de filtrado
+    path('', include('apps.ingesta_correo.urls_reglas')),
+    
     # API endpoints
     path('api/dashboard/', ApiDashboardIngestaView.as_view(), name='api_ingesta_dashboard'),
     path('api/tendencias/', ApiDashboardIngestaView.as_view(), name='api_tendencias'),

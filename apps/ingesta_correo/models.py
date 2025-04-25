@@ -194,31 +194,67 @@ class ReglaFiltrado(models.Model):
         ASUNTO = 'asunto', 'Asunto'
         CONTENIDO = 'contenido', 'Contenido del correo'
         ADJUNTO_NOMBRE = 'adjunto_nombre', 'Nombre de adjunto'
+        ADJUNTO_TIPO = 'adjunto_tipo', 'Tipo de adjunto'
+        ADJUNTO_TAMAÑO = 'adjunto_tamaño', 'Tamaño de adjunto'
+        TIENE_ADJUNTOS = 'tiene_adjuntos', 'Tiene adjuntos'
+        FECHA_RECEPCION = 'fecha_recepcion', 'Fecha de recepción'
         
     class TipoCondicion(models.TextChoices):
         CONTIENE = 'contiene', 'Contiene'
         NO_CONTIENE = 'no_contiene', 'No contiene'
         ES_IGUAL = 'es_igual', 'Es igual a'
+        NO_ES_IGUAL = 'no_es_igual', 'No es igual a'
         EMPIEZA_CON = 'empieza_con', 'Empieza con'
         TERMINA_CON = 'termina_con', 'Termina con'
         REGEX = 'regex', 'Expresión regular'
+        MAYOR_QUE = 'mayor_que', 'Mayor que'
+        MENOR_QUE = 'menor_que', 'Menor que'
+        ENTRE = 'entre', 'Entre valores'
+        ES_VERDADERO = 'es_verdadero', 'Es verdadero'
+        ES_FALSO = 'es_falso', 'Es falso'
         
     class TipoAccion(models.TextChoices):
         PROCESAR = 'procesar', 'Procesar correo'
         IGNORAR = 'ignorar', 'Ignorar correo'
         MARCAR_REVISION = 'marcar_revision', 'Marcar para revisión'
+        ETIQUETAR = 'etiquetar', 'Etiquetar correo'
+        PRIORIDAD_ALTA = 'prioridad_alta', 'Asignar prioridad alta'
+        PRIORIDAD_MEDIA = 'prioridad_media', 'Asignar prioridad media'
+        PRIORIDAD_BAJA = 'prioridad_baja', 'Asignar prioridad baja'
+        NOTIFICAR = 'notificar', 'Enviar notificación'
+        
+    class TipoOperador(models.TextChoices):
+        """Tipo de operador lógico para grupos de condiciones."""
+        Y = 'AND', 'Todas las condiciones deben cumplirse (Y)'
+        O = 'OR', 'Al menos una condición debe cumplirse (O)'
         
     servicio = models.ForeignKey(ServicioIngesta, on_delete=models.CASCADE, related_name='reglas')
     nombre = models.CharField(max_length=100)
-    campo = models.CharField(max_length=20, choices=TipoCampo.choices)
-    condicion = models.CharField(max_length=20, choices=TipoCondicion.choices)
-    valor = models.CharField(max_length=255)
+    descripcion = models.TextField(null=True, blank=True, help_text="Descripción detallada de la regla")
+    # Para reglas simples, estos campos siguen funcionando
+    campo = models.CharField(max_length=20, choices=TipoCampo.choices, null=True, blank=True)
+    condicion = models.CharField(max_length=20, choices=TipoCondicion.choices, null=True, blank=True)
+    valor = models.CharField(max_length=255, null=True, blank=True)
+    # Para reglas compuestas, se usará el grupo de condiciones
+    es_compuesta = models.BooleanField(default=False, help_text="Indica si la regla usa múltiples condiciones")
+    operador_logico = models.CharField(max_length=3, choices=TipoOperador.choices, default=TipoOperador.Y)
+    # Acción a ejecutar
     accion = models.CharField(max_length=20, choices=TipoAccion.choices)
+    parametros_accion = models.JSONField(null=True, blank=True, help_text="Parámetros adicionales para la acción")
+    # Metadatos
     activa = models.BooleanField(default=True)
     prioridad = models.IntegerField(default=0)
+    fecha_inicio = models.DateTimeField(null=True, blank=True, help_text="Fecha desde la que la regla está activa")
+    fecha_fin = models.DateTimeField(null=True, blank=True, help_text="Fecha hasta la que la regla está activa")
+    conteo_usos = models.IntegerField(default=0, help_text="Número de veces que la regla ha sido aplicada")
+    ultima_aplicacion = models.DateTimeField(null=True, blank=True, help_text="Última vez que la regla fue aplicada")
+    # Auditoría
     creado_en = models.DateTimeField(auto_now_add=True)
     modificado_en = models.DateTimeField(auto_now=True)
-    creado_por = models.ForeignKey('authentication.ZentraflowUser', on_delete=models.SET_NULL, null=True, blank=True)
+    creado_por = models.ForeignKey('authentication.ZentraflowUser', related_name='reglas_creadas', 
+                                 on_delete=models.SET_NULL, null=True, blank=True)
+    modificado_por = models.ForeignKey('authentication.ZentraflowUser', related_name='reglas_modificadas', 
+                                     on_delete=models.SET_NULL, null=True, blank=True)
     
     class Meta:
         verbose_name = "Regla de Filtrado"
@@ -226,4 +262,350 @@ class ReglaFiltrado(models.Model):
         ordering = ['prioridad', 'nombre']
         
     def __str__(self):
-        return f"{self.nombre} ({self.get_campo_display()} {self.get_condicion_display()} '{self.valor}')" 
+        if self.es_compuesta:
+            return f"{self.nombre} (Regla compuesta)"
+        return f"{self.nombre} ({self.get_campo_display()} {self.get_condicion_display()} '{self.valor}')"
+    
+    def evaluar(self, correo):
+        """
+        Evalúa la regla contra un correo específico.
+        
+        Args:
+            correo: Un objeto CorreoIngesta a evaluar
+            
+        Returns:
+            bool: True si la regla se cumple, False en caso contrario
+        """
+        if self.es_compuesta:
+            # Evaluar grupo de condiciones
+            condiciones = self.condiciones.all()
+            if not condiciones:
+                return False
+                
+            if self.operador_logico == self.TipoOperador.Y:
+                # Todas deben cumplirse
+                return all(condicion.evaluar(correo) for condicion in condiciones)
+            else:
+                # Al menos una debe cumplirse
+                return any(condicion.evaluar(correo) for condicion in condiciones)
+        else:
+            # Regla simple (retrocompatible)
+            return self._evaluar_condicion_simple(correo)
+            
+    def _evaluar_condicion_simple(self, correo):
+        """Evalúa una condición simple en un correo."""
+        valor_campo = self._obtener_valor_campo(correo, self.campo)
+        
+        # Convertir condición a mayúsculas para hacer la comparación insensible a mayúsculas/minúsculas
+        condicion_upper = self.condicion.upper() if self.condicion else ""
+        
+        # Convertir a minúsculas para comparaciones insensibles a mayúsculas/minúsculas
+        valor_campo_lower = valor_campo.lower()
+        valor_lower = self.valor.lower() if self.valor else ""
+        
+        # Evaluar según tipo de condición
+        if condicion_upper == self.TipoCondicion.CONTIENE.upper():
+            return valor_lower in valor_campo_lower
+        elif condicion_upper == self.TipoCondicion.NO_CONTIENE.upper():
+            return valor_lower not in valor_campo_lower
+        elif condicion_upper == self.TipoCondicion.ES_IGUAL.upper():
+            return valor_lower == valor_campo_lower
+        elif condicion_upper == self.TipoCondicion.NO_ES_IGUAL.upper():
+            return valor_lower != valor_campo_lower
+        elif condicion_upper == self.TipoCondicion.EMPIEZA_CON.upper():
+            return valor_campo_lower.startswith(valor_lower)
+        elif condicion_upper == self.TipoCondicion.TERMINA_CON.upper():
+            return valor_campo_lower.endswith(valor_lower)
+        elif condicion_upper == self.TipoCondicion.REGEX.upper():
+            import re
+            try:
+                return bool(re.search(self.valor, valor_campo, re.IGNORECASE))
+            except re.error:
+                return False
+        
+        return False
+        
+    def _obtener_valor_campo(self, correo, campo):
+        """Obtiene el valor del campo especificado de un correo."""
+        # Convertir campo a mayúsculas para hacer la comparación insensible a mayúsculas/minúsculas
+        campo_upper = campo.upper() if campo else ""
+        
+        if campo_upper == self.TipoCampo.REMITENTE.upper():
+            return correo.remitente
+        elif campo_upper == self.TipoCampo.ASUNTO.upper():
+            return correo.asunto
+        elif campo_upper == self.TipoCampo.CONTENIDO.upper():
+            return correo.contenido_plano or ""
+        elif campo_upper == self.TipoCampo.ADJUNTO_NOMBRE.upper():
+            # Concatenar todos los nombres de adjuntos
+            return " ".join([adj.nombre_archivo for adj in correo.adjuntos.all()])
+        elif campo_upper == self.TipoCampo.TIENE_ADJUNTOS.upper():
+            return str(correo.adjuntos.exists())
+        elif campo_upper == self.TipoCampo.ADJUNTO_TIPO.upper():
+            return " ".join([adj.tipo_contenido for adj in correo.adjuntos.all()])
+        elif campo_upper == self.TipoCampo.ADJUNTO_TAMAÑO.upper():
+            # Tamaño total de los adjuntos en KB
+            return str(sum([adj.tamaño for adj in correo.adjuntos.all()]) / 1024)
+        elif campo_upper == self.TipoCampo.FECHA_RECEPCION.upper():
+            return correo.fecha_recepcion.strftime('%Y-%m-%d %H:%M:%S')
+        return ""
+        
+    def registrar_uso(self):
+        """Registra que la regla ha sido aplicada."""
+        self.conteo_usos += 1
+        self.ultima_aplicacion = timezone.now()
+        self.save(update_fields=['conteo_usos', 'ultima_aplicacion'])
+        
+    def esta_activa(self):
+        """Verifica si la regla está activa considerando fechas de inicio/fin."""
+        if not self.activa:
+            return False
+            
+        ahora = timezone.now()
+        if self.fecha_inicio and ahora < self.fecha_inicio:
+            return False
+            
+        if self.fecha_fin and ahora > self.fecha_fin:
+            return False
+            
+        return True
+        
+    def ejecutar_accion(self, correo):
+        """
+        Ejecuta la acción definida por la regla sobre un correo.
+        
+        Args:
+            correo: Objeto CorreoIngesta sobre el que se ejecutará la acción
+            
+        Returns:
+            bool: True si la acción se ejecutó correctamente
+        """
+        self.registrar_uso()
+        
+        if self.accion == self.TipoAccion.PROCESAR:
+            # Marcar para procesamiento
+            correo.estado = CorreoIngesta.Estado.PENDIENTE
+        elif self.accion == self.TipoAccion.IGNORAR:
+            # Marcar como ignorado con un estado especial
+            correo.estado = "IGNORADO"
+        elif self.accion == self.TipoAccion.MARCAR_REVISION:
+            # Marcar para revisión manual
+            correo.estado = "REVISION"
+        elif self.accion == self.TipoAccion.ETIQUETAR:
+            # Etiquetar el correo (se guarda en JSON field)
+            etiquetas = correo.detalles.get('etiquetas', []) if correo.detalles else []
+            nueva_etiqueta = self.parametros_accion.get('etiqueta', 'sin_etiqueta')
+            if nueva_etiqueta not in etiquetas:
+                etiquetas.append(nueva_etiqueta)
+                
+            if not correo.detalles:
+                correo.detalles = {}
+            correo.detalles['etiquetas'] = etiquetas
+        
+        # Guardar cambios en el correo
+        correo.save()
+        return True
+
+
+class CondicionRegla(models.Model):
+    """
+    Representa una condición individual dentro de una regla compuesta.
+    Cada regla compuesta puede tener múltiples condiciones conectadas por operadores lógicos.
+    """
+    regla = models.ForeignKey(ReglaFiltrado, on_delete=models.CASCADE, related_name='condiciones')
+    campo = models.CharField(max_length=20, choices=ReglaFiltrado.TipoCampo.choices)
+    condicion = models.CharField(max_length=20, choices=ReglaFiltrado.TipoCondicion.choices)
+    valor = models.CharField(max_length=255)
+    orden = models.PositiveSmallIntegerField(default=0, help_text="Orden de evaluación dentro de la regla")
+    
+    class Meta:
+        verbose_name = "Condición"
+        verbose_name_plural = "Condiciones"
+        ordering = ['regla', 'orden']
+        
+    def __str__(self):
+        return f"{self.get_campo_display()} {self.get_condicion_display()} '{self.valor}'"
+        
+    def evaluar(self, correo):
+        """Evalúa esta condición contra un correo específico."""
+        valor_campo = self._obtener_valor_campo(correo, self.campo)
+        
+        # Convertir condición a mayúsculas para hacer la comparación insensible a mayúsculas/minúsculas
+        condicion_upper = self.condicion.upper() if self.condicion else ""
+        
+        # Evaluar según tipo de condición
+        if condicion_upper == ReglaFiltrado.TipoCondicion.CONTIENE.upper():
+            return self.valor in valor_campo
+        elif condicion_upper == ReglaFiltrado.TipoCondicion.NO_CONTIENE.upper():
+            return self.valor not in valor_campo
+        elif condicion_upper == ReglaFiltrado.TipoCondicion.ES_IGUAL.upper():
+            return self.valor == valor_campo
+        elif condicion_upper == ReglaFiltrado.TipoCondicion.NO_ES_IGUAL.upper():
+            return self.valor != valor_campo
+        elif condicion_upper == ReglaFiltrado.TipoCondicion.EMPIEZA_CON.upper():
+            return valor_campo.startswith(self.valor)
+        elif condicion_upper == ReglaFiltrado.TipoCondicion.TERMINA_CON.upper():
+            return valor_campo.endswith(self.valor)
+        elif condicion_upper == ReglaFiltrado.TipoCondicion.REGEX.upper():
+            import re
+            try:
+                return bool(re.search(self.valor, valor_campo))
+            except re.error:
+                return False
+        elif condicion_upper == ReglaFiltrado.TipoCondicion.MAYOR_QUE.upper():
+            try:
+                return float(valor_campo) > float(self.valor)
+            except (ValueError, TypeError):
+                return False
+        elif condicion_upper == ReglaFiltrado.TipoCondicion.MENOR_QUE.upper():
+            try:
+                return float(valor_campo) < float(self.valor)
+            except (ValueError, TypeError):
+                return False
+        elif condicion_upper == ReglaFiltrado.TipoCondicion.ES_VERDADERO.upper():
+            return valor_campo.lower() in ('true', 'verdadero', 'si', 'yes', '1')
+        elif condicion_upper == ReglaFiltrado.TipoCondicion.ES_FALSO.upper():
+            return valor_campo.lower() in ('false', 'falso', 'no', '0')
+        
+        return False
+        
+    def _obtener_valor_campo(self, correo, campo):
+        """Obtiene el valor del campo especificado de un correo."""
+        # Convertir campo a mayúsculas para hacer la comparación insensible a mayúsculas/minúsculas
+        campo_upper = campo.upper() if campo else ""
+        
+        if campo_upper == self.TipoCampo.REMITENTE.upper():
+            return correo.remitente
+        elif campo_upper == self.TipoCampo.ASUNTO.upper():
+            return correo.asunto
+        elif campo_upper == self.TipoCampo.CONTENIDO.upper():
+            return correo.contenido_plano or ""
+        elif campo_upper == self.TipoCampo.ADJUNTO_NOMBRE.upper():
+            # Concatenar todos los nombres de adjuntos
+            return " ".join([adj.nombre_archivo for adj in correo.adjuntos.all()])
+        elif campo_upper == self.TipoCampo.TIENE_ADJUNTOS.upper():
+            return str(correo.adjuntos.exists())
+        elif campo_upper == self.TipoCampo.ADJUNTO_TIPO.upper():
+            return " ".join([adj.tipo_contenido for adj in correo.adjuntos.all()])
+        elif campo_upper == self.TipoCampo.ADJUNTO_TAMAÑO.upper():
+            # Tamaño total de los adjuntos en KB
+            return str(sum([adj.tamaño for adj in correo.adjuntos.all()]) / 1024)
+        elif campo_upper == self.TipoCampo.FECHA_RECEPCION.upper():
+            return correo.fecha_recepcion.strftime('%Y-%m-%d %H:%M:%S')
+        return ""
+
+
+class HistorialAplicacionRegla(models.Model):
+    """
+    Registra cuándo y cómo se aplicó una regla a un correo específico.
+    Esto permite auditoría y análisis de la efectividad de las reglas.
+    """
+    regla = models.ForeignKey(ReglaFiltrado, on_delete=models.CASCADE, related_name='historial')
+    correo = models.ForeignKey(CorreoIngesta, on_delete=models.CASCADE, related_name='reglas_aplicadas')
+    fecha_aplicacion = models.DateTimeField(auto_now_add=True)
+    resultado = models.BooleanField(help_text="True si la regla se cumplió, False si no")
+    accion_ejecutada = models.CharField(max_length=100, null=True, blank=True)
+    detalles = models.JSONField(null=True, blank=True, help_text="Detalles adicionales de la evaluación")
+    
+    class Meta:
+        verbose_name = "Historial de Aplicación de Regla"
+        verbose_name_plural = "Historial de Aplicación de Reglas"
+        ordering = ['-fecha_aplicacion']
+        indexes = [
+            models.Index(fields=['regla', 'fecha_aplicacion']),
+            models.Index(fields=['correo', 'fecha_aplicacion']),
+        ]
+        
+    def __str__(self):
+        return f"Regla '{self.regla}' aplicada a correo {self.correo.id}"
+
+
+class CategoriaRegla(models.Model):
+    """
+    Permite agrupar reglas por categorías para mejor organización.
+    """
+    servicio = models.ForeignKey(ServicioIngesta, on_delete=models.CASCADE, related_name='categorias_reglas')
+    nombre = models.CharField(max_length=100)
+    descripcion = models.TextField(null=True, blank=True)
+    color = models.CharField(max_length=7, default="#3498db", help_text="Color hexadecimal para identificar la categoría")
+    
+    class Meta:
+        verbose_name = "Categoría de Reglas"
+        verbose_name_plural = "Categorías de Reglas"
+        ordering = ['nombre']
+        unique_together = ('servicio', 'nombre')
+        
+    def __str__(self):
+        return self.nombre
+
+
+class RegistroLogRegla(models.Model):
+    """
+    Registro detallado de la evaluación de reglas de filtrado.
+    Permite un seguimiento paso a paso del proceso de evaluación
+    de cada regla contra cada correo.
+    """
+    class TipoLog(models.TextChoices):
+        INFO = 'INFO', 'Información'
+        DEBUG = 'DEBUG', 'Depuración'
+        WARNING = 'WARNING', 'Advertencia'
+        ERROR = 'ERROR', 'Error'
+        TRACE = 'TRACE', 'Traza'
+    
+    tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE)
+    regla = models.ForeignKey(ReglaFiltrado, on_delete=models.CASCADE, related_name='logs_evaluacion',
+                             null=True, blank=True)
+    correo = models.ForeignKey(CorreoIngesta, on_delete=models.CASCADE, related_name='logs_evaluacion',
+                              null=True, blank=True)
+    timestamp = models.DateTimeField(auto_now_add=True)
+    nivel = models.CharField(max_length=10, choices=TipoLog.choices, default=TipoLog.INFO)
+    mensaje = models.TextField()
+    datos_contexto = models.JSONField(null=True, blank=True, 
+                                    help_text="Datos adicionales relacionados con el evento de evaluación")
+    
+    class Meta:
+        verbose_name = "Registro de Log de Regla"
+        verbose_name_plural = "Registros de Log de Reglas"
+        ordering = ['-timestamp']
+        indexes = [
+            models.Index(fields=['tenant', 'timestamp']),
+            models.Index(fields=['regla', 'timestamp']),
+            models.Index(fields=['correo', 'timestamp']),
+            models.Index(fields=['nivel', 'timestamp']),
+        ]
+        
+    def __str__(self):
+        return f"[{self.nivel}] {self.timestamp.strftime('%Y-%m-%d %H:%M:%S')} - {self.mensaje[:50]}..."
+    
+    @classmethod
+    def log(cls, tenant, nivel, mensaje, regla=None, correo=None, datos_contexto=None):
+        """
+        Método de ayuda para crear entradas de log fácilmente.
+        
+        Args:
+            tenant: Tenant relacionado
+            nivel: Nivel de log (INFO, DEBUG, WARNING, ERROR, TRACE)
+            mensaje: Mensaje descriptivo
+            regla: Objeto ReglaFiltrado opcional
+            correo: Objeto CorreoIngesta opcional
+            datos_contexto: Diccionario con datos de contexto adicionales
+            
+        Returns:
+            RegistroLogRegla: El objeto de registro creado
+        """
+        return cls.objects.create(
+            tenant=tenant,
+            nivel=nivel,
+            mensaje=mensaje,
+            regla=regla,
+            correo=correo,
+            datos_contexto=datos_contexto
+        )
+
+
+# Añadimos relación de categoría a las reglas
+ReglaFiltrado.add_to_class('categoria', 
+                           models.ForeignKey(CategoriaRegla, 
+                                            on_delete=models.SET_NULL, 
+                                            null=True, blank=True, 
+                                            related_name='reglas')) 
