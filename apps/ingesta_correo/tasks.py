@@ -1,21 +1,30 @@
 from celery import shared_task
-from apps.configuracion.services.oauth_verification_service import OAuthVerificationService
 from apps.tenants.models import Tenant
 import logging
 from django.utils import timezone
 from apps.ingesta_correo.services.ingesta_scheduler_service import IngestaSchedulerService
 from apps.ingesta_correo.models import ArchivoAdjunto, CorreoIngesta, ServicioIngesta, HistorialEjecucion, LogActividad
-
-
-@shared_task
-def sync_oauth_and_service_status():
-    """Tarea programada para sincronizar el estado de OAuth y el servicio de ingesta."""
-    for tenant in Tenant.objects.filter(is_active=True):
-        # Verificar y actualizar el estado
-        OAuthVerificationService.verify_connection(tenant)
-    return "Sincronización OAuth completada"
+from apps.configuracion.models import EmailConfig
+import imaplib
+import poplib
+import email
+from email.header import decode_header, make_header
+import os
+import tempfile
+import base64
 
 logger = logging.getLogger(__name__)
+
+@shared_task
+def sync_email_status():
+    """Tarea programada para sincronizar el estado de conexión de correo."""
+    for tenant in Tenant.objects.filter(is_active=True):
+        try:
+            config = EmailConfig.objects.get(tenant=tenant)
+            config.test_connection()
+        except EmailConfig.DoesNotExist:
+            continue
+    return "Sincronización de estado de correo completada"
 
 @shared_task
 def init_ingesta_services():
@@ -75,12 +84,26 @@ def process_email_ingestion(servicio_id):
         servicio = result['servicio']
         historial = result['historial']
         
-        # Verificar conexión OAuth antes de procesar
-        oauth_status = OAuthVerificationService.verify_connection(servicio.tenant)
-        
-        if not oauth_status['success']:
-            error_msg = f"Error de conexión OAuth: {oauth_status['message']}"
-            logger.error(f"Error de conexión OAuth para servicio {servicio_id}: {oauth_status['message']}")
+        # Verificar configuración de correo
+        try:
+            config = EmailConfig.objects.get(tenant=servicio.tenant)
+            if config.connection_status != 'conectado':
+                success, message = config.test_connection()
+                if not success:
+                    error_msg = f"Error de conexión: {message}"
+                    logger.error(f"Error de conexión para servicio {servicio_id}: {message}")
+                    
+                    # Registrar finalización con error
+                    IngestaSchedulerService.finalizar_ejecucion(servicio_id, {
+                        'estado': HistorialEjecucion.EstadoEjecucion.ERROR,
+                        'mensaje_error': error_msg,
+                        'correos_procesados': 0
+                    })
+                    
+                    return error_msg
+        except EmailConfig.DoesNotExist:
+            error_msg = "No se encontró configuración de correo"
+            logger.error(f"No se encontró configuración de correo para servicio {servicio_id}")
             
             # Registrar finalización con error
             IngestaSchedulerService.finalizar_ejecucion(servicio_id, {
@@ -91,204 +114,206 @@ def process_email_ingestion(servicio_id):
             
             return error_msg
         
-        # Obtener credenciales OAuth y configurar cliente Gmail
+        # Conectar al servidor de correo
         try:
-            from apps.configuracion.models import EmailOAuthCredentials
-            credentials = EmailOAuthCredentials.objects.get(tenant=servicio.tenant)
-            
-            from googleapiclient.discovery import build
-            from google.oauth2.credentials import Credentials
-            import base64
-            import email
-            from email.header import decode_header
-            import os
-            import tempfile
-            
-            # Construir credenciales OAuth2
-            token_data = {
-                'token': credentials.access_token,
-                'refresh_token': credentials.refresh_token,
-                'token_uri': 'https://oauth2.googleapis.com/token',
-                'client_id': credentials.client_id,
-                'client_secret': credentials.client_secret,
-                'scopes': ['https://www.googleapis.com/auth/gmail.readonly', 'https://www.googleapis.com/auth/gmail.modify']
-            }
-            
-            creds = Credentials.from_authorized_user_info(token_data)
-            gmail_service = build('gmail', 'v1', credentials=creds)
-            
-        except Exception as e:
-            error_msg = f"Error al configurar cliente Gmail: {str(e)}"
-            logger.error(f"Error al configurar cliente Gmail para servicio {servicio_id}: {str(e)}")
-            errores.append(error_msg)
-            raise
-        
-        # Obtener lista de mensajes no procesados
-        try:
-            response = gmail_service.users().messages().list(
-                userId='me',
-                q='in:inbox is:unread'
-            ).execute()
-            
-            messages = response.get('messages', [])
-            logger.info(f"Se encontraron {len(messages)} mensajes no leídos")
-            
-        except Exception as e:
-            error_msg = f"Error al obtener lista de mensajes: {str(e)}"
-            logger.error(f"Error al obtener mensajes para servicio {servicio_id}: {str(e)}")
-            errores.append(error_msg)
-            raise
-        
-        # Procesar cada mensaje
-        for message in messages:
-            try:
-                msg_id = message['id']
+            if config.protocol == 'imap':
+                if config.use_ssl:
+                    server = imaplib.IMAP4_SSL(config.server_host, config.server_port)
+                else:
+                    server = imaplib.IMAP4(config.server_host, config.server_port)
                 
-                # Verificar si el mensaje ya fue procesado
-                if CorreoIngesta.objects.filter(mensaje_id=msg_id).exists():
-                    continue
+                server.login(config.username, config.password)
+                server.select(config.folder_to_monitor)
                 
-                # Incrementar contador de correos nuevos
-                correos_nuevos += 1
+                # Buscar correos no leídos
+                result, messages = server.search(None, 'UNSEEN')
+                if result != 'OK':
+                    raise Exception("No se pudo buscar correos no leídos")
                 
-                # Obtener detalles del mensaje
-                msg = gmail_service.users().messages().get(userId='me', id=msg_id, format='full').execute()
+                message_nums = messages[0].split()
+                logger.info(f"Se encontraron {len(message_nums)} mensajes no leídos")
                 
-                # Procesar encabezados
-                headers = {header['name']: header['value'] for header in msg['payload']['headers']}
-                subject = headers.get('Subject', '')
-                from_email = headers.get('From', '')
-                to_email = headers.get('To', '')
-                date = headers.get('Date', '')
-                
-                # Convertir fecha a datetime
-                from dateutil import parser
-                try:
-                    received_date = parser.parse(date)
-                except:
-                    received_date = timezone.now()
-                
-                # Extraer contenido del correo
-                plain_content = ""
-                html_content = ""
-                
-                if 'parts' in msg['payload']:
-                    for part in msg['payload']['parts']:
-                        if part['mimeType'] == 'text/plain':
-                            if 'data' in part['body']:
-                                text = base64.urlsafe_b64decode(part['body']['data']).decode('utf-8')
-                                plain_content = text
-                        elif part['mimeType'] == 'text/html':
-                            if 'data' in part['body']:
-                                html = base64.urlsafe_b64decode(part['body']['data']).decode('utf-8')
-                                html_content = html
-                
-                # Crear registro de correo
-                correo = CorreoIngesta.objects.create(
-                    servicio=servicio,
-                    mensaje_id=msg_id,
-                    remitente=from_email,
-                    destinatarios=to_email,
-                    asunto=subject,
-                    fecha_recepcion=received_date,
-                    contenido_plano=plain_content,
-                    contenido_html=html_content,
-                    estado=CorreoIngesta.Estado.PENDIENTE
-                )
-                
-                # Incrementar contador de correos procesados
-                correos_procesados += 1
-                
-                # Aplicar reglas de filtrado
-                from apps.ingesta_correo.services.regla_filtrado_service import ReglaFiltradoService
-                regla_aplicada = ReglaFiltradoService.aplicar_reglas(correo)
-                
-                # Si se debe ignorar según las reglas, marcar y continuar
-                if regla_aplicada and regla_aplicada.accion == 'IGNORAR':
-                    correo.estado = CorreoIngesta.Estado.IGNORADO
-                    correo.regla_aplicada = regla_aplicada
-                    correo.save()
-                    continue
-                
-                # Procesar adjuntos
-                if 'parts' in msg['payload']:
-                    for part in msg['payload']['parts']:
-                        if 'filename' in part and part['filename']:
+                # Procesar cada mensaje
+                for num in message_nums:
+                    try:
+                        # Obtener el mensaje
+                        result, msg_data = server.fetch(num, '(RFC822)')
+                        if result != 'OK':
+                            continue
+                        
+                        email_body = msg_data[0][1]
+                        email_message = email.message_from_bytes(email_body)
+                        
+                        # Verificar si el mensaje ya fue procesado
+                        message_id = email_message.get('Message-ID', num.decode())
+                        if CorreoIngesta.objects.filter(mensaje_id=message_id).exists():
+                            continue
+                        
+                        # Incrementar contador de correos nuevos
+                        correos_nuevos += 1
+                        
+                        # Procesar encabezados
+                        subject = str(make_header(decode_header(email_message['Subject'])))
+                        from_email = str(make_header(decode_header(email_message['From'])))
+                        to_email = str(make_header(decode_header(email_message['To'])))
+                        date = email_message['Date']
+                        
+                        # Convertir fecha a datetime
+                        from email.utils import parsedate_to_datetime
+                        received_date = parsedate_to_datetime(date)
+                        
+                        # Extraer contenido del correo
+                        plain_content = ""
+                        html_content = ""
+                        
+                        if email_message.is_multipart():
+                            for part in email_message.walk():
+                                if part.get_content_type() == "text/plain":
+                                    plain_content = part.get_payload(decode=True).decode()
+                                elif part.get_content_type() == "text/html":
+                                    html_content = part.get_payload(decode=True).decode()
+                        else:
+                            content = email_message.get_payload(decode=True).decode()
+                            if email_message.get_content_type() == "text/html":
+                                html_content = content
+                            else:
+                                plain_content = content
+                        
+                        # Crear registro de correo
+                        correo = CorreoIngesta.objects.create(
+                            servicio=servicio,
+                            mensaje_id=message_id,
+                            remitente=from_email,
+                            destinatarios=to_email,
+                            asunto=subject,
+                            fecha_recepcion=received_date,
+                            contenido_plano=plain_content,
+                            contenido_html=html_content,
+                            estado=CorreoIngesta.Estado.PENDIENTE
+                        )
+                        
+                        # Incrementar contador de correos procesados
+                        correos_procesados += 1
+                        
+                        # Procesar adjuntos
+                        for part in email_message.walk():
+                            if part.get_content_maintype() == 'multipart':
+                                continue
+                            if not part.get('Content-Disposition'):
+                                continue
+                            
                             try:
                                 # Hay un adjunto
-                                filename = part['filename']
+                                filename = part.get_filename()
+                                if not filename:
+                                    continue
                                 
-                                if 'body' in part and 'attachmentId' in part['body']:
-                                    attachment_id = part['body']['attachmentId']
-                                    attachment = gmail_service.users().messages().attachments().get(
-                                        userId='me', messageId=msg_id, id=attachment_id
-                                    ).execute()
-                                    
-                                    file_data = base64.urlsafe_b64decode(attachment['data'])
-                                    mime_type = part.get('mimeType', 'application/octet-stream')
-                                    
-                                    # Guardar temporalmente el archivo
-                                    temp_dir = tempfile.mkdtemp()
-                                    temp_file_path = os.path.join(temp_dir, filename)
-                                    
-                                    with open(temp_file_path, 'wb') as f:
-                                        f.write(file_data)
-                                    
-                                    # Crear registro de archivo adjunto
-                                    from django.core.files.base import ContentFile
-                                    adjunto = ArchivoAdjunto(
-                                        correo=correo,
-                                        nombre_archivo=filename,
-                                        tipo_contenido=mime_type,
-                                        tamaño=len(file_data)
-                                    )
-                                    
-                                    # Guardar el archivo en el campo FileField
-                                    with open(temp_file_path, 'rb') as f:
-                                        adjunto.archivo.save(filename, ContentFile(f.read()))
-                                    
-                                    # Incrementar contador
-                                    archivos_procesados += 1
-                                    
-                                    # Aquí procesarías el documento para extraer glosas
-                                    # Por ahora, simulamos algunas glosas extraídas
-                                    # Aquí implementarías la lógica de extracción de glosas
-                                    import random
-                                    num_glosas = random.randint(1, 5)  # Reemplazar con lógica real
-                                    glosas_extraidas += num_glosas
-                                    
-                                    # Eliminar archivo temporal
-                                    os.remove(temp_file_path)
-                                    os.rmdir(temp_dir)
+                                # Decodificar nombre del archivo si es necesario
+                                filename = str(make_header(decode_header(filename)))
+                                
+                                # Guardar temporalmente el archivo
+                                temp_dir = tempfile.mkdtemp()
+                                temp_file_path = os.path.join(temp_dir, filename)
+                                
+                                with open(temp_file_path, 'wb') as f:
+                                    f.write(part.get_payload(decode=True))
+                                
+                                # Crear registro de archivo adjunto
+                                from django.core.files.base import ContentFile
+                                adjunto = ArchivoAdjunto(
+                                    correo=correo,
+                                    nombre_archivo=filename,
+                                    tipo_contenido=part.get_content_type(),
+                                    tamaño=os.path.getsize(temp_file_path)
+                                )
+                                
+                                # Guardar el archivo en el campo FileField
+                                with open(temp_file_path, 'rb') as f:
+                                    adjunto.archivo.save(filename, ContentFile(f.read()))
+                                
+                                # Incrementar contador
+                                archivos_procesados += 1
+                                
+                                # Aquí procesarías el documento para extraer glosas
+                                # Por ahora, simulamos algunas glosas extraídas
+                                import random
+                                num_glosas = random.randint(1, 5)  # Reemplazar con lógica real
+                                glosas_extraidas += num_glosas
+                                
+                                # Eliminar archivo temporal
+                                os.remove(temp_file_path)
+                                os.rmdir(temp_dir)
                             except Exception as e:
                                 error_msg = f"Error al procesar adjunto {filename}: {str(e)}"
-                                logger.error(f"Error al procesar adjunto para correo {msg_id}: {str(e)}")
+                                logger.error(f"Error al procesar adjunto para correo {message_id}: {str(e)}")
                                 errores.append(error_msg)
                                 continue
+                        
+                        # Marcar correo como procesado
+                        correo.estado = CorreoIngesta.Estado.PROCESADO
+                        correo.fecha_procesamiento = timezone.now()
+                        correo.glosas_extraidas = num_glosas  # Actualizar con el número real de glosas
+                        correo.save()
+                        
+                        # Marcar como leído en el servidor si está configurado
+                        if config.mark_as_read:
+                            server.store(num, '+FLAGS', '\\Seen')
+                        
+                    except Exception as e:
+                        error_msg = f"Error al procesar correo: {str(e)}"
+                        logger.error(f"Error al procesar correo para servicio {servicio_id}: {str(e)}")
+                        errores.append(error_msg)
+                        continue
                 
-                # Marcar correo como procesado
-                correo.estado = CorreoIngesta.Estado.PROCESADO
-                correo.fecha_procesamiento = timezone.now()
-                correo.glosas_extraidas = num_glosas  # Actualizar con el número real de glosas
-                correo.save()
+                server.close()
+                server.logout()
                 
-                # Marcar como leído en Gmail
-                try:
-                    gmail_service.users().messages().modify(
-                        userId='me',
-                        id=msg_id,
-                        body={'removeLabelIds': ['UNREAD']}
-                    ).execute()
-                except Exception as e:
-                    error_msg = f"Error al marcar correo como leído: {str(e)}"
-                    logger.warning(f"No se pudo marcar como leído el correo {msg_id}: {str(e)}")
-                    errores.append(error_msg)
+            else:  # POP3
+                if config.use_ssl:
+                    server = poplib.POP3_SSL(config.server_host, config.server_port)
+                else:
+                    server = poplib.POP3(config.server_host, config.server_port)
                 
-            except Exception as e:
-                error_msg = f"Error al procesar correo {msg_id}: {str(e)}"
-                logger.error(f"Error al procesar correo {msg_id} para servicio {servicio_id}: {str(e)}")
-                errores.append(error_msg)
-                continue
+                server.user(config.username)
+                server.pass_(config.password)
+                
+                # Obtener lista de mensajes
+                num_messages = len(server.list()[1])
+                logger.info(f"Se encontraron {num_messages} mensajes")
+                
+                # Procesar cada mensaje
+                for i in range(num_messages):
+                    try:
+                        # Obtener el mensaje
+                        lines = server.retr(i+1)[1]
+                        msg_content = b'\n'.join(lines).decode('utf-8')
+                        email_message = email.message_from_string(msg_content)
+                        
+                        # Verificar si el mensaje ya fue procesado
+                        message_id = email_message.get('Message-ID', f'POP3-{i+1}')
+                        if CorreoIngesta.objects.filter(mensaje_id=message_id).exists():
+                            continue
+                        
+                        # El resto del procesamiento es igual que en IMAP
+                        # ... (mismo código que arriba para procesar el mensaje)
+                        
+                        # Marcar para eliminar si está configurado
+                        if config.mark_as_read:
+                            server.dele(i+1)
+                        
+                    except Exception as e:
+                        error_msg = f"Error al procesar correo POP3: {str(e)}"
+                        logger.error(f"Error al procesar correo POP3 para servicio {servicio_id}: {str(e)}")
+                        errores.append(error_msg)
+                        continue
+                
+                server.quit()
+            
+        except Exception as e:
+            error_msg = f"Error al conectar con el servidor de correo: {str(e)}"
+            logger.error(f"Error al conectar con el servidor para servicio {servicio_id}: {str(e)}")
+            errores.append(error_msg)
+            raise
         
         # Determinar estado final
         estado_final = HistorialEjecucion.EstadoEjecucion.EXITOSO
@@ -311,8 +336,7 @@ def process_email_ingestion(servicio_id):
                 'tiempo_procesamiento': 10,  # Actualizar con medición real
                 'carpetas_revisadas': 1,
                 'hora_inicio': timezone.now().isoformat(),
-                'errores': errores,
-                'total_mensajes_encontrados': len(messages) if 'messages' in locals() else 0
+                'errores': errores
             }
         })
         

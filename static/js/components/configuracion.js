@@ -8,7 +8,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // Obtener referencias a elementos del DOM
     const saveClientInfoBtn = document.getElementById('saveClientInfoBtn');
     const savePreferencesBtn = document.getElementById('savePreferencesBtn');
-    const saveOAuthConfigBtn = document.getElementById('saveOAuthConfigBtn');
     const removeLogoBtn = document.getElementById('removeLogoBtn');
     const logoUpload = document.getElementById('logoUpload');
     const logoPreview = document.getElementById('logoPreview');
@@ -19,7 +18,6 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log("Elementos encontrados:");
     console.log("saveClientInfoBtn:", !!saveClientInfoBtn);
     console.log("savePreferencesBtn:", !!savePreferencesBtn);
-    console.log("saveOAuthConfigBtn:", !!saveOAuthConfigBtn);
     console.log("removeLogoBtn:", !!removeLogoBtn);
     
     // Obtener CSRF token
@@ -34,13 +32,13 @@ document.addEventListener('DOMContentLoaded', function() {
     function showMessage(type, message) {
         const alert = type === 'success' ? successAlert : errorAlert;
         if (!alert) {
-            alert(message);
+            console.log(`${type.toUpperCase()}: ${message}`);
             return;
         }
         
         const messageContainer = alert.querySelector('.alert-message');
         if (!messageContainer) {
-            alert(message);
+            console.log(`${type.toUpperCase()}: ${message}`);
             return;
         }
         
@@ -248,22 +246,17 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // 3. Botón de Guardar Configuración OAuth
-    if (saveOAuthConfigBtn) {
-        console.log("Asignando evento al botón saveOAuthConfigBtn");
-        saveOAuthConfigBtn.addEventListener('click', function(e) {
-            console.log("Botón saveOAuthConfigBtn clickeado");
-            e.preventDefault();
-            saveConfig(this);
-        });
-    }
-    
     // 4. Asignar eventos a botones que contengan "Guardar" en su texto
     document.querySelectorAll('button').forEach(button => {
-        if ((button.textContent.includes('Guardar') || 
-             button.innerHTML.includes('fa-save')) && 
-            !button.hasAttribute('data-event-assigned')) {
-            
+        // No asignar eventos a botones que ya tienen un ID específico o que ya tienen un manejador
+        if (button.id === 'saveClientInfoBtn' || 
+            button.id === 'savePreferencesBtn' || 
+            button.id === 'saveEmailConfigBtn' ||
+            button.hasAttribute('data-event-assigned')) {
+            return;
+        }
+        
+        if (button.textContent.includes('Guardar') || button.innerHTML.includes('fa-save')) {
             console.log(`Asignando evento a botón genérico: ${button.textContent.trim()}`);
             button.setAttribute('data-event-assigned', 'true');
             button.addEventListener('click', function(e) {

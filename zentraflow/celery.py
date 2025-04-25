@@ -28,15 +28,6 @@ def setup_periodic_tasks(sender, **kwargs):
         queue='ingesta',
         routing_key='ingesta.check'
     )
-    
-    # Sincronización de estado OAuth cada hora
-    sender.add_periodic_task(
-        3600.0,
-        'apps.ingesta_correo.tasks.sync_oauth_and_service_status',
-        name='sincronizar_oauth_estado',
-        queue='ingesta',
-        routing_key='ingesta.sync'
-    )
 
 @app.task(bind=True)
 def debug_task(self):

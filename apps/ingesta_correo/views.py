@@ -7,12 +7,13 @@ from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_protect
 from django.db import transaction
+from django.db.models import Q
 
 from apps.ingesta_correo.services.dashboard_service import DashboardService
 
 from .models import ServicioIngesta, HistorialEjecucion, LogActividad, CorreoIngesta
 from .services.ingesta_scheduler_service import IngestaSchedulerService
-from apps.configuracion.services.oauth_verification_service import OAuthVerificationService
+from apps.configuracion.models import EmailConfig
 from .tasks import execute_ingestion_now
 
 class DashboardIngestaView(LoginRequiredMixin, TemplateView):
@@ -70,22 +71,21 @@ class ToggleServicioView(LoginRequiredMixin, View):
         tenant = request.user.tenant
         
         try:
-            # Verificar estado de OAuth antes de activar el servicio
-            from apps.configuracion.models import EmailOAuthCredentials
+            # Verificar estado de la configuración de correo antes de activar el servicio
             try:
-                credentials = EmailOAuthCredentials.objects.get(tenant=tenant)
-                oauth_valid = credentials.authorized and credentials.is_token_valid()
-            except EmailOAuthCredentials.DoesNotExist:
-                oauth_valid = False
+                config = EmailConfig.objects.get(tenant=tenant)
+                email_config_valid = config.connection_status == 'conectado'
+            except EmailConfig.DoesNotExist:
+                email_config_valid = False
             
             servicio, created = ServicioIngesta.objects.get_or_create(tenant=tenant)
             
-            # Si están intentando activar el servicio pero OAuth no es válido, no permitirlo
+            # Si están intentando activar el servicio pero la configuración no es válida, no permitirlo
             new_state = not servicio.activo
-            if new_state and not oauth_valid:
+            if new_state and not email_config_valid:
                 return JsonResponse({
                     'success': False,
-                    'message': "No se puede activar el servicio sin una configuración OAuth válida."
+                    'message': "No se puede activar el servicio sin una configuración de correo válida."
                 })
             
             servicio.activo = new_state
@@ -148,9 +148,9 @@ class CorreosListView(LoginRequiredMixin, TemplateView):
         
         if busqueda:
             correos = correos.filter(
-                models.Q(asunto__icontains=busqueda) | 
-                models.Q(remitente__icontains=busqueda) |
-                models.Q(destinatarios__icontains=busqueda)
+                Q(asunto__icontains=busqueda) | 
+                Q(remitente__icontains=busqueda) |
+                Q(destinatarios__icontains=busqueda)
             )
         
         # Paginación
@@ -170,7 +170,7 @@ class CorreosListView(LoginRequiredMixin, TemplateView):
         return context
     
 class VerifyConnectionView(LoginRequiredMixin, View):
-    """Vista para verificar la conexión OAuth con Gmail."""
+    """Vista para verificar la conexión al servidor de correo."""
     
     @method_decorator(csrf_protect)
     def post(self, request):
@@ -178,19 +178,39 @@ class VerifyConnectionView(LoginRequiredMixin, View):
         tenant = request.user.tenant
         
         try:
-            # Llamar al servicio de verificación
-            result = OAuthVerificationService.verify_connection(tenant)
-            return JsonResponse(result)
+            # Obtener configuración
+            config = get_object_or_404(EmailConfig, tenant=tenant)
             
+            # Probar conexión
+            success, message = config.test_connection()
+            
+            return JsonResponse({
+                'success': success,
+                'message': message,
+                'status': {
+                    'connection_status': config.connection_status,
+                    'last_check': config.last_check.isoformat() if config.last_check else None,
+                    'email_address': config.email_address
+                }
+            })
+            
+        except EmailConfig.DoesNotExist:
+            return JsonResponse({
+                'success': False,
+                'message': 'No hay configuración de correo establecida',
+                'status': {
+                    'connection_status': 'no_configurado',
+                    'last_check': None,
+                    'email_address': None
+                }
+            }, status=404)
         except Exception as e:
             return JsonResponse({
                 'success': False,
                 'message': f'Error al verificar la conexión: {str(e)}',
                 'status': {
-                    'oauth_authorized': False,
-                    'oauth_token_valid': False,
-                    'folder_accessible': False,
-                    'read_permissions': False,
+                    'connection_status': 'error',
+                    'last_check': None,
                     'email_address': None
                 }
             }, status=500)
