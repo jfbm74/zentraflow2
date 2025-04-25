@@ -245,7 +245,7 @@
                             <input class="form-check-input" type="checkbox" id="ingestaEnabled" checked>
                             <label class="form-check-label" for="ingestaEnabled">Habilitar Ingesta</label>
                         </div>
-                        <button class="btn btn-primary" id="saveOAuthConfigBtn">
+                        <button class="btn btn-primary" id="saveEmailConfigBtn">
                             <i class="fas fa-save"></i> Guardar Configuración
                         </button>
                     </div>
@@ -260,83 +260,39 @@
                             </div>
                             
                             <div class="mb-4">
-                                <label for="authMethod" class="form-label">Método de Autenticación</label>
-                                <select class="form-select" id="authMethod">
-                                    <option value="oauth" selected>OAuth 2.0 Web Flow</option>
-                                    <option value="service">Cuenta de Servicio</option>
+                                <label for="protocolType" class="form-label">Protocolo de Correo</label>
+                                <select class="form-select" id="protocolType">
+                                    <option value="imap" selected>IMAP</option>
+                                    <option value="pop3">POP3</option>
                                 </select>
-                                <div class="form-text">Método para conectarse a la cuenta de correo</div>
+                                <div class="form-text">Protocolo para conectarse al servidor de correo</div>
                             </div>
                             
-                            <!-- Credenciales OAuth 2.0 -->
-                            <div id="oauthCredentials">
-                                <div class="mb-4">
-                                    <label for="clientId" class="form-label">Client ID</label>
-                                    <input type="text" class="form-control" id="clientId" placeholder="123456789-abcdef.apps.googleusercontent.com">
-                                    <div class="form-text">Client ID de Google Cloud Project</div>
-                                </div>
-                                
-                                <div class="mb-4">
-                                    <label for="clientSecret" class="form-label">Client Secret</label>
-                                    <div class="input-group">
-                                        <input type="password" class="form-control" id="clientSecret" placeholder="GOCSPX-xxxxxxxxxxxxxx">
-                                        <button class="btn btn-outline-secondary toggle-password" type="button">
-                                            <i class="fas fa-eye"></i>
-                                        </button>
-                                    </div>
-                                    <div class="form-text">Client Secret de Google Cloud Project</div>
-                                </div>
-                                
-                                <div class="oauth-status mb-4">
-                                    <label class="form-label">Estado de Autorización:</label>
-                                    <span id="authStatus" class="badge bg-danger"><i class="fas fa-times-circle"></i> No autorizado</span>
-                                    <button class="btn btn-primary btn-sm ms-2" id="authorizeBtn">
-                                        <i class="fas fa-key"></i> Autorizar
-                                    </button>
-                                    <button class="btn btn-warning btn-sm ms-2" id="reauthorizeBtn" style="display: none;">
-                                        <i class="fas fa-sync-alt"></i> Reautorizar
-                                    </button>
-                                    <button class="btn btn-danger btn-sm ms-2" id="revokeBtn" style="display: none;">
-                                        <i class="fas fa-times"></i> Revocar
-                                    </button>
-                                </div>
-                                
-                                <div class="mb-4">
-                                    <label class="form-label">Última Autorización:</label>
-                                    <span id="lastAuthTime">Nunca</span>
-                                </div>
+                            <div class="mb-4">
+                                <label for="serverHost" class="form-label">Servidor de Correo</label>
+                                <input type="text" class="form-control" id="serverHost" placeholder="imap.gmail.com">
+                                <div class="form-text">Dirección del servidor de correo (ej: imap.gmail.com, pop.gmail.com)</div>
                             </div>
                             
-                            <!-- Credenciales Cuenta de Servicio (oculto por defecto) -->
-                            <div id="serviceCredentials" style="display: none;">
-                                <div class="mb-4">
-                                    <label class="form-label">Archivo de Clave JSON</label>
-                                    <div class="service-account-file">
-                                        <div class="file-status">
-                                            <i class="fas fa-file-code text-primary"></i>
-                                            <span class="file-name">service-account-key.json</span>
-                                        </div>
-                                        <div class="file-actions">
-                                            <label for="serviceKeyUpload" class="btn btn-outline-primary btn-sm">
-                                                <i class="fas fa-upload"></i> Cambiar
-                                            </label>
-                                            <input type="file" id="serviceKeyUpload" accept=".json" class="d-none">
-                                        </div>
-                                    </div>
-                                    <div class="form-text">Archivo JSON con credenciales de Google Cloud</div>
-                                </div>
-                                
-                                <div class="service-status mb-4">
-                                    <label class="form-label">Estado de Configuración:</label>
-                                    <span class="badge bg-success"><i class="fas fa-check-circle"></i> Archivo cargado</span>
-                                    <button class="btn btn-outline-danger btn-sm ms-2" id="removeKeyBtn">
-                                        <i class="fas fa-trash-alt"></i> Eliminar
-                                    </button>
-                                </div>
+                            <div class="mb-4">
+                                <label for="serverPort" class="form-label">Puerto</label>
+                                <input type="number" class="form-control" id="serverPort" value="993">
+                                <div class="form-text">Puerto del servidor (IMAP: 993, POP3: 995 para SSL)</div>
                             </div>
                         </div>
                         
                         <div class="col-md-6">
+                            <div class="mb-4">
+                                <label for="emailPassword" class="form-label">Contraseña</label>
+                                <div class="input-group">
+                                    <input type="password" class="form-control" id="emailPassword" placeholder="Contraseña del correo">
+                                    <button class="btn btn-outline-secondary toggle-password" type="button">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                </div>
+                                <div class="form-text">Contraseña de la cuenta de correo</div>
+                            </div>
+                            
                             <div class="mb-4">
                                 <label for="folderMonitor" class="form-label">Carpeta a Monitorear</label>
                                 <select class="form-select" id="folderMonitor">
@@ -358,12 +314,29 @@
                             
                             <div class="mb-4">
                                 <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="useSSL" checked>
+                                    <label class="form-check-label" for="useSSL">Usar SSL/TLS</label>
+                                </div>
+                                <div class="form-text">Usar conexión segura SSL/TLS (recomendado)</div>
+                            </div>
+                            
+                            <div class="mb-4">
+                                <div class="form-check form-switch">
                                     <input class="form-check-input" type="checkbox" id="markAsRead" checked>
                                     <label class="form-check-label" for="markAsRead">Marcar correos como leídos</label>
                                 </div>
                                 <div class="form-text">Marcar automáticamente los correos procesados como leídos</div>
                             </div>
                         </div>
+                    </div>
+                    
+                    <div class="connection-test mt-3">
+                        <button class="btn btn-outline-primary" id="testConnectionBtn">
+                            <i class="fas fa-plug"></i> Probar Conexión
+                        </button>
+                        <span class="connection-status ms-3" id="connectionStatus">
+                            <!-- El estado se actualizará via JavaScript -->
+                        </span>
                     </div>
                 </div>
             </div>
@@ -394,7 +367,7 @@
                             <div class="timeline-marker error"></div>
                             <div class="timeline-content">
                                 <div class="timeline-date">15/04/2025 10:05:02</div>
-                                <div class="timeline-title">Error de autenticación</div>
+                                <div class="timeline-title">Error de conexión</div>
                                 <div class="timeline-details">No se pudo establecer conexión con el servidor IMAP</div>
                             </div>
                         </div>
@@ -408,7 +381,7 @@
                         </div>
                     </div>
                     <div class="text-center mt-3">
-                        <button class="btn btn-primary">
+                        <button class="btn btn-primary" id="syncNowBtn">
                             <i class="fas fa-sync-alt"></i> Sincronizar Ahora
                         </button>
                     </div>
@@ -616,32 +589,9 @@
     </div>
 </div>
 
-<!-- Modal de confirmación para reautorizar OAuth -->
-<div class="modal fade" id="reauthorizeModal" tabindex="-1" aria-labelledby="reauthorizeModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="reauthorizeModalLabel">Reautorizar OAuth</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <div class="alert alert-warning">
-                    <i class="fas fa-exclamation-triangle"></i> Esta acción revocará la autorización actual y requerirá que vuelva a realizar el proceso de autorización con Google.
-                </div>
-                <p>¿Está seguro que desea reautorizar el acceso a esta cuenta de correo?</p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-warning" id="confirmReauthorizeBtn">
-                    <i class="fas fa-sync-alt"></i> Sí, Reautorizar
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
 {% endblock %}
 
 {% block extra_js %}
 <script src="{% static 'js/components/configuracion.js' %}"></script>
-<script src="{% static 'js/components/oauth_manager.js' %}"></script>
+<script src="{% static 'js/components/ingesta_correo_config.js' %}"></script>
 {% endblock %}

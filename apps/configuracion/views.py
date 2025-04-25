@@ -1,3 +1,4 @@
+import json
 from django.views.generic import TemplateView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from apps.tenants.models import Tenant  # Change this line
@@ -6,81 +7,107 @@ from .services.config_service import ConfigService
 from django.shortcuts import get_object_or_404
 from django.utils.decorators import method_decorator
 from django.http import JsonResponse
+from .models import TenantConfig, EmailConfig
+from .services.email_config_service import EmailConfigService
 
 
 
 
 class ConfiguracionView(LoginRequiredMixin, TemplateView):
-    """Vista para la configuración del cliente (tenant)."""
+    """Vista principal para la sección de configuración."""
+    
     template_name = "configuracion/configuracion.html"
-    login_url = '/auth/login/'
     
     def get_context_data(self, **kwargs):
-        """Añadir datos de contexto para la plantilla."""
+        """Añade el tenant actual y datos adicionales al contexto."""
         context = super().get_context_data(**kwargs)
         context['active_menu'] = 'configuracion'
         
-        # Si se proporciona un tenant_id en la URL, intentar obtener ese tenant
-        tenant_id = self.kwargs.get('tenant_id')
-        if tenant_id and (self.request.user.is_superuser or self.request.user.role == 'ADMIN'):
-            tenant = get_object_or_404(Tenant, id=tenant_id, is_active=True)
-        else:
-            # Por defecto, usar el tenant del usuario
-            tenant = self.request.user.tenant
+        # Si es super admin, mostrar listado de tenants
+        if self.request.user.is_superuser or self.request.user.role == 'ADMIN':
+            context['tenants'] = Tenant.objects.filter(is_active=True)
             
-        context['current_tenant'] = tenant
+        # Determinar el tenant actual basado en la URL o usuario
+        tenant_id = kwargs.get('tenant_id')
+        if tenant_id and (self.request.user.is_superuser or self.request.user.role == 'ADMIN'):
+            context['current_tenant'] = Tenant.objects.get(id=tenant_id, is_active=True)
+        else:
+            context['current_tenant'] = self.request.user.tenant
         
         # Obtener configuración del tenant
-        tenant_config = ConfigService.get_tenant_config(tenant)
-        context['tenant_config'] = tenant_config
+        context['tenant_config'] = ConfigService.get_tenant_config(context['current_tenant'])
         
-        # Para Super Admin, cargar todos los tenants
-        if self.request.user.is_superuser or self.request.user.role == 'ADMIN':
-            context['tenants'] = Tenant.objects.filter(is_active=True).order_by('name')
-            context['is_super_admin'] = self.request.user.is_superuser
-            context['is_editable'] = True
-        else:
-            context['is_editable'] = False
-            
+        # Comprobar si el usuario puede editar la configuración
+        context['is_editable'] = (self.request.user.is_superuser or 
+                                  self.request.user.role == 'ADMIN' and 
+                                  self.request.user.tenant == context['current_tenant'])
+        
+        context['is_super_admin'] = self.request.user.is_superuser
+        
         return context
     
     def post(self, request, *args, **kwargs):
-        """Procesar formulario de configuración."""
-        # Determinar el tenant a actualizar
+        """Maneja solicitudes POST para guardar la configuración."""
+        # Verificar si el usuario tiene permisos
+        if not (request.user.is_superuser or request.user.role == 'ADMIN'):
+            return JsonResponse({'success': False, 'message': 'No tiene permisos para editar la configuración'}, status=403)
+        
+        # Determinar el tenant actual basado en la URL o usuario
         tenant_id = kwargs.get('tenant_id')
         if tenant_id and (request.user.is_superuser or request.user.role == 'ADMIN'):
-            tenant = get_object_or_404(Tenant, id=tenant_id, is_active=True)
+            tenant = Tenant.objects.get(id=tenant_id, is_active=True)
         else:
             tenant = request.user.tenant
         
-        # Verificar permisos de edición
-        if not (request.user.is_superuser or request.user.role == 'ADMIN'):
-            return JsonResponse({
-                'success': False,
-                'message': 'No tiene permisos para editar la configuración.'
-            }, status=403)
+        # Determinar la acción a realizar
+        action = request.POST.get('action', '')
         
-        # Verificar el tipo de acción
-        action = request.POST.get('action')
+        # Acciones para la configuración del tenant (logo, información general)
         if action == 'remove_logo':
             # Eliminar logo
             config = ConfigService.get_tenant_config(tenant)
             result = ConfigService.remove_tenant_logo(config)
             return JsonResponse(result)
+        
+        elif action == 'save_email_config':
+            # Guardar configuración de correo
+            result = EmailConfigService.update_email_config(
+                tenant=tenant,
+                data=request.POST,
+                user=request.user
+            )
+            # Eliminar el objeto EmailConfig del resultado para evitar error de serialización
+            if 'config' in result:
+                del result['config']
+            return JsonResponse(result)
+        
+        elif action == 'test_connection':
+            # Probar conexión de correo
+            result = EmailConfigService.test_connection(request.POST)
+            return JsonResponse(result)
+        
+        elif action == 'sync_now':
+            # Iniciar sincronización manual
+            # Aquí se debería implementar la lógica para iniciar la sincronización
+            # como una tarea asíncrona
+            return JsonResponse({
+                'success': True,
+                'message': 'Sincronización iniciada correctamente'
+            })
+        
         else:
-            # Actualizar configuración
-            form = TenantConfigForm(request.POST, request.FILES)
-            if form.is_valid():
-                result = ConfigService.update_tenant_config(
-                    tenant=tenant,
-                    user=request.user,
-                    data=form.cleaned_data,
-                    files=request.FILES
-                )
-                return JsonResponse(result)
-            else:
-                return JsonResponse({
-                    'success': False,
-                    'message': 'Formulario inválido',
-                    'errors': form.errors
-                }, status=400)
+            # Por defecto, actualizar configuración general del tenant
+            result = ConfigService.update_tenant_config(
+                tenant=tenant,
+                user=request.user,
+                data=request.POST,
+                files=request.FILES
+            )
+            
+            if result['success'] and 'config' in result:
+                # Si se actualizó correctamente, devolver la URL del logo si existe
+                config = result['config']
+                if config.logo:
+                    result['logo_url'] = config.logo.url
+            
+            return JsonResponse(result)

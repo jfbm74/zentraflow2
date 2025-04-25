@@ -2,6 +2,8 @@
 from django.db import models
 from apps.core.storage import TenantFileSystemStorage
 import os
+from django.utils import timezone
+from django.core.validators import MinValueValidator, MaxValueValidator
 
 def tenant_directory_path(instance, filename):
     """
@@ -58,38 +60,88 @@ class TenantConfig(models.Model):
 
 # apps/configuracion/models.py (fragmento de código para actualizar)
 
-class EmailOAuthCredentials(models.Model):
-    """Modelo para almacenar credenciales OAuth 2.0 de cuentas de correo por tenant."""
-    tenant = models.OneToOneField('tenants.Tenant', on_delete=models.CASCADE, related_name='oauth_credentials')
-    client_id = models.CharField(max_length=255, verbose_name="Client ID")
-    client_secret = models.CharField(max_length=255, verbose_name="Client Secret")
-    redirect_uri = models.CharField(max_length=255, verbose_name="URI de Redirección")
-    email_address = models.EmailField(verbose_name="Dirección de Correo Monitoreada", null=True, blank=True)
-    access_token = models.TextField(verbose_name="Token de Acceso", null=True, blank=True)
-    refresh_token = models.TextField(verbose_name="Token de Actualización", null=True, blank=True)
-    token_expiry = models.DateTimeField(verbose_name="Expiración del Token", null=True, blank=True)
-    authorized = models.BooleanField(default=False, verbose_name="Autorizado")
-    last_authorized = models.DateTimeField(null=True, blank=True, verbose_name="Última Autorización")
+class EmailConfig(models.Model):
+    """Modelo para almacenar la configuración de correo por tenant."""
+    
+    PROTOCOL_CHOICES = [
+        ('imap', 'IMAP'),
+        ('pop3', 'POP3'),
+    ]
+    
+    tenant = models.OneToOneField('tenants.Tenant', on_delete=models.CASCADE, related_name='email_config')
+    email_address = models.EmailField(verbose_name="Dirección de Correo Monitoreada")
+    protocol = models.CharField(max_length=4, choices=PROTOCOL_CHOICES, default='imap', verbose_name="Protocolo")
+    server_host = models.CharField(max_length=255, verbose_name="Servidor de Correo")
+    server_port = models.IntegerField(verbose_name="Puerto", validators=[MinValueValidator(1), MaxValueValidator(65535)])
+    username = models.CharField(max_length=255, verbose_name="Usuario")
+    password = models.CharField(max_length=255, verbose_name="Contraseña")
+    use_ssl = models.BooleanField(default=True, verbose_name="Usar SSL/TLS")
     folder_to_monitor = models.CharField(max_length=100, default="INBOX", verbose_name="Carpeta a Monitorear")
-    check_interval = models.IntegerField(default=5, verbose_name="Intervalo de Verificación (minutos)")
+    check_interval = models.IntegerField(
+        default=5, 
+        verbose_name="Intervalo de Verificación (minutos)",
+        validators=[MinValueValidator(1), MaxValueValidator(60)]
+    )
     mark_as_read = models.BooleanField(default=True, verbose_name="Marcar como Leído")
     ingesta_enabled = models.BooleanField(default=True, verbose_name="Habilitar Ingesta")
+    last_check = models.DateTimeField(null=True, blank=True, verbose_name="Última Verificación")
+    connection_status = models.CharField(max_length=50, default="no_verificado", verbose_name="Estado de Conexión")
+    connection_error = models.TextField(null=True, blank=True, verbose_name="Error de Conexión")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de Creación")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Última Actualización")
 
     class Meta:
         app_label = 'configuracion'
-        verbose_name = "Credenciales OAuth para Correo"
-        verbose_name_plural = "Credenciales OAuth para Correo"
+        verbose_name = "Configuración de Correo"
+        verbose_name_plural = "Configuraciones de Correo"
     
     def __str__(self):
-        return f"OAuth de {self.email_address or 'Sin configurar'} ({self.tenant.name})"
+        return f"Configuración de correo de {self.email_address} ({self.tenant.name})"
     
-    def is_token_valid(self):
-        """Verifica si el token actual es válido."""
-        if not self.access_token or not self.token_expiry:
-            return False
+    def save(self, *args, **kwargs):
+        # Actualizar los puertos por defecto según el protocolo y SSL
+        if not self.server_port:
+            if self.protocol == 'imap':
+                self.server_port = 993 if self.use_ssl else 143
+            else:  # pop3
+                self.server_port = 995 if self.use_ssl else 110
         
-        # Consideramos el token como válido si falta más de 5 minutos para que expire
-        from django.utils import timezone
-        return self.token_expiry > timezone.now() + timezone.timedelta(minutes=5)
+        super().save(*args, **kwargs)
+    
+    def test_connection(self):
+        """Prueba la conexión al servidor de correo."""
+        try:
+            if self.protocol == 'imap':
+                import imaplib
+                if self.use_ssl:
+                    server = imaplib.IMAP4_SSL(self.server_host, self.server_port)
+                else:
+                    server = imaplib.IMAP4(self.server_host, self.server_port)
+                
+                server.login(self.username, self.password)
+                server.select(self.folder_to_monitor)
+                server.close()
+                server.logout()
+            else:  # pop3
+                import poplib
+                if self.use_ssl:
+                    server = poplib.POP3_SSL(self.server_host, self.server_port)
+                else:
+                    server = poplib.POP3(self.server_host, self.server_port)
+                
+                server.user(self.username)
+                server.pass_(self.password)
+                server.quit()
+            
+            self.connection_status = "conectado"
+            self.connection_error = None
+            self.save()
+            return True, "Conexión exitosa"
+            
+        except Exception as e:
+            self.connection_status = "error"
+            self.connection_error = str(e)
+            self.save()
+            return False, f"Error de conexión: {str(e)}"
 
 

@@ -22,8 +22,6 @@ urlpatterns = [
     # API endpoints - Change this from "configuracion.api.urls" to "apps.configuracion.api.urls"
     path('api/', include('apps.configuracion.api.urls')),
 
-    # Ingesta de Correo - Añadir estas líneas
-    path('ingesta-correo/', include('apps.ingesta_correo.urls')),
 ]
 
 # Servir archivos estáticos en desarrollo

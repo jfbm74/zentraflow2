@@ -53,7 +53,7 @@ INSTALLED_APPS = [
     'apps.authentication.apps.AuthenticationConfig',
     'apps.core.apps.CoreConfig',
     'apps.configuracion.apps.ConfiguracionConfig',
-    #'apps.ingesta_correo.apps.IngestaCorreoConfig',
+    'apps.ingesta_correo.apps.IngestaCorreoConfig',
 ]
 
 
@@ -191,10 +191,6 @@ LOGGING = {
 }
 
 CELERY_BEAT_SCHEDULE = {
-    'sync-oauth-status': {
-        'task': 'apps.ingesta_correo.tasks.sync_oauth_and_service_status',
-        'schedule': crontab(minute='*/5'),   # Ejecutar cada 5 minutos  
-    },
 }
 
 CELERY_BROKER_URL = 'redis://localhost:6379/0'

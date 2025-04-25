@@ -4,7 +4,7 @@ import logging
 from django.utils import timezone
 from django.db import transaction
 from apps.ingesta_correo.models import ServicioIngesta, HistorialEjecucion, LogActividad
-from apps.configuracion.services.oauth_verification_service import OAuthVerificationService
+from apps.configuracion.models import EmailConfig
 
 logger = logging.getLogger(__name__)
 
@@ -13,173 +13,149 @@ class IngestaSchedulerService:
     Servicio para gestionar la programación y ejecución del servicio de ingesta de correo.
     """
     
-    @staticmethod
-    def inicializar_servicios():
+    @classmethod
+    def inicializar_servicios(cls):
         """
-        Inicializa todos los servicios de ingesta activos, configurando sus tiempos de ejecución.
+        Inicializa todos los servicios de ingesta activos.
+        Retorna el número de servicios inicializados.
         """
-        logger.info("Inicializando servicios de ingesta...")
-        servicios = ServicioIngesta.objects.filter(activo=True)
-        contador = 0
-        
-        for servicio in servicios:
-            try:
-                # Verificar que las credenciales OAuth son válidas
-                oauth_status = OAuthVerificationService.verify_connection(servicio.tenant)
-                
-                if oauth_status['success']:
-                    servicio.actualizar_proxima_ejecucion()
-                    logger.info(f"Servicio inicializado para tenant {servicio.tenant.id}: próxima ejecución {servicio.proxima_ejecucion}")
-                    contador += 1
-                else:
-                    logger.warning(f"No se pudo inicializar servicio para tenant {servicio.tenant.id}: {oauth_status['message']}")
-                    # Registrar el problema
-                    LogActividad.objects.create(
-                        tenant=servicio.tenant,
-                        evento='ERROR_INICIALIZACION',
-                        detalles=f"No se pudo inicializar el servicio de ingesta: {oauth_status['message']}",
-                        estado='ERROR'
-                    )
-            except Exception as e:
-                logger.error(f"Error al inicializar servicio para tenant {servicio.tenant.id}: {str(e)}")
-        
-        logger.info(f"Se inicializaron {contador} servicios de ingesta")
-        return contador
+        count = 0
+        try:
+            servicios = ServicioIngesta.objects.filter(activo=True)
+            for servicio in servicios:
+                try:
+                    # Verificar configuración de correo
+                    config = EmailConfig.objects.get(tenant=servicio.tenant)
+                    if config.connection_status != 'conectado':
+                        success, message = config.test_connection()
+                        if not success:
+                            logger.error(f"Error al inicializar servicio {servicio.id}: {message}")
+                            continue
+                    count += 1
+                except EmailConfig.DoesNotExist:
+                    logger.error(f"No se encontró configuración de correo para servicio {servicio.id}")
+                    continue
+                except Exception as e:
+                    logger.error(f"Error al inicializar servicio {servicio.id}: {str(e)}")
+                    continue
+            return count
+        except Exception as e:
+            logger.error(f"Error al inicializar servicios: {str(e)}")
+            return 0
     
-    @staticmethod
-    def verificar_servicios_pendientes():
+    @classmethod
+    def verificar_servicios_pendientes(cls):
         """
-        Verifica si hay algún servicio que deba ejecutarse ahora.
+        Verifica qué servicios están pendientes de ejecución según su programación.
+        Retorna un QuerySet con los servicios que deben ejecutarse.
         """
-        now = timezone.now()
-        servicios_pendientes = ServicioIngesta.objects.filter(
-            activo=True,
-            en_ejecucion=False,
-            proxima_ejecucion__lte=now
-        )
-        
-        if servicios_pendientes.exists():
-            logger.info(f"Se encontraron {servicios_pendientes.count()} servicios pendientes de ejecución")
-        
-        return servicios_pendientes
+        try:
+            ahora = timezone.now()
+            servicios = ServicioIngesta.objects.filter(
+                activo=True,
+                ultima_ejecucion__isnull=True
+            ) | ServicioIngesta.objects.filter(
+                activo=True,
+                ultima_ejecucion__lt=ahora - timezone.timedelta(minutes=5)  # Intervalo mínimo entre ejecuciones
+            )
+            
+            # Filtrar servicios que tienen configuración de correo válida
+            servicios_validos = []
+            for servicio in servicios:
+                try:
+                    config = EmailConfig.objects.get(tenant=servicio.tenant)
+                    if config.connection_status == 'conectado':
+                        servicios_validos.append(servicio.id)
+                except EmailConfig.DoesNotExist:
+                    continue
+            
+            return ServicioIngesta.objects.filter(id__in=servicios_validos)
+        except Exception as e:
+            logger.error(f"Error al verificar servicios pendientes: {str(e)}")
+            return ServicioIngesta.objects.none()
     
-    @staticmethod
-    def ejecutar_servicio(servicio_id):
+    @classmethod
+    def ejecutar_servicio(cls, servicio_id):
         """
-        Ejecuta el servicio de ingesta para un tenant específico.
+        Inicia la ejecución de un servicio de ingesta.
+        Retorna un diccionario con el servicio y el historial creado.
         """
         try:
             with transaction.atomic():
-                # Obtener servicio y bloquear para actualización
                 servicio = ServicioIngesta.objects.select_for_update().get(id=servicio_id)
                 
-                # Verificar si ya está en ejecución
-                if servicio.en_ejecucion:
-                    logger.warning(f"El servicio {servicio_id} ya está en ejecución")
-                    return False
+                # Verificar si ya hay una ejecución en curso
+                if HistorialEjecucion.objects.filter(
+                    servicio=servicio,
+                    estado=HistorialEjecucion.EstadoEjecucion.EN_PROCESO
+                ).exists():
+                    logger.warning(f"El servicio {servicio_id} ya tiene una ejecución en curso")
+                    return None
                 
-                # Verificar si está activo
-                if not servicio.activo:
-                    logger.warning(f"El servicio {servicio_id} no está activo")
-                    return False
-                
-                # Iniciar la ejecución
-                servicio.iniciar_ejecucion()
+                # Verificar configuración de correo
+                try:
+                    config = EmailConfig.objects.get(tenant=servicio.tenant)
+                    if config.connection_status != 'conectado':
+                        success, message = config.test_connection()
+                        if not success:
+                            logger.error(f"Error de conexión para servicio {servicio_id}: {message}")
+                            return None
+                except EmailConfig.DoesNotExist:
+                    logger.error(f"No se encontró configuración de correo para servicio {servicio_id}")
+                    return None
                 
                 # Crear registro de historial
                 historial = HistorialEjecucion.objects.create(
                     servicio=servicio,
-                    tenant=servicio.tenant,
-                    fecha_inicio=timezone.now(),
-                    estado=HistorialEjecucion.EstadoEjecucion.EXITOSO
+                    estado=HistorialEjecucion.EstadoEjecucion.EN_PROCESO,
+                    fecha_inicio=timezone.now()
                 )
                 
-                # Registrar en log de actividad
-                LogActividad.objects.create(
-                    tenant=servicio.tenant,
-                    evento='INGESTA_INICIADA',
-                    detalles=f"Ejecución del servicio de ingesta iniciada",
-                    estado='INFO'
-                )
+                # Actualizar servicio
+                servicio.ultima_ejecucion = timezone.now()
+                servicio.save()
                 
-                logger.info(f"Iniciada ejecución para servicio {servicio_id}")
-                return {'servicio': servicio, 'historial': historial}
-        
-        except ServicioIngesta.DoesNotExist:
-            logger.error(f"No se encontró el servicio con ID {servicio_id}")
-            return False
-        
+                return {
+                    'servicio': servicio,
+                    'historial': historial
+                }
         except Exception as e:
-            logger.error(f"Error al iniciar ejecución del servicio {servicio_id}: {str(e)}")
-            return False
+            logger.error(f"Error al ejecutar servicio {servicio_id}: {str(e)}")
+            return None
     
-    @staticmethod
-    def finalizar_ejecucion(servicio_id, resultado):
+    @classmethod
+    def finalizar_ejecucion(cls, servicio_id, resultado):
         """
-        Registra la finalización de una ejecución de servicio.
+        Finaliza la ejecución de un servicio y registra los resultados.
         
         Args:
             servicio_id: ID del servicio
-            resultado: Dict con los resultados de la ejecución
-                - estado: EXITOSO, ERROR, PARCIAL, CANCELADO
-                - correos_procesados: número de correos procesados
-                - correos_nuevos: número de correos nuevos encontrados
-                - archivos_procesados: número de archivos procesados
-                - glosas_extraidas: número de glosas extraídas
-                - mensaje_error: mensaje de error (si aplica)
-                - detalles: JSON con información adicional
+            resultado: Diccionario con los resultados de la ejecución
         """
         try:
             with transaction.atomic():
-                # Obtener servicio y bloquear para actualización
                 servicio = ServicioIngesta.objects.select_for_update().get(id=servicio_id)
-                
-                # Si no está en ejecución, algo está mal
-                if not servicio.en_ejecucion:
-                    logger.warning(f"Intentando finalizar servicio {servicio_id} que no está en ejecución")
-                
-                # Registrar finalización en historial
                 historial = HistorialEjecucion.objects.filter(
                     servicio=servicio,
-                    fecha_fin__isnull=True
-                ).order_by('-fecha_inicio').first()
+                    estado=HistorialEjecucion.EstadoEjecucion.EN_PROCESO
+                ).latest('fecha_inicio')
                 
-                if historial:
-                    # Actualizar historial
-                    historial.fecha_fin = timezone.now()
-                    historial.estado = resultado.get('estado', HistorialEjecucion.EstadoEjecucion.EXITOSO)
-                    historial.correos_procesados = resultado.get('correos_procesados', 0)
-                    historial.correos_nuevos = resultado.get('correos_nuevos', 0)
-                    historial.archivos_procesados = resultado.get('archivos_procesados', 0)
-                    historial.glosas_extraidas = resultado.get('glosas_extraidas', 0)
-                    historial.mensaje_error = resultado.get('mensaje_error', None)
-                    historial.detalles = resultado.get('detalles', None)
-                    historial.calcular_duracion()
-                    historial.save()
-                    
-                    # Registrar en log de actividad
-                    evento = 'INGESTA_COMPLETADA' if historial.estado == HistorialEjecucion.EstadoEjecucion.EXITOSO else 'INGESTA_ERROR'
-                    estado = 'SUCCESS' if historial.estado == HistorialEjecucion.EstadoEjecucion.EXITOSO else 'ERROR'
-                    
-                    LogActividad.objects.create(
-                        tenant=servicio.tenant,
-                        evento=evento,
-                        detalles=f"Ejecución del servicio de ingesta finalizada: {historial.estado}. "
-                                 f"Correos procesados: {historial.correos_procesados}, Glosas extraídas: {historial.glosas_extraidas}"
-                                 + (f". Error: {historial.mensaje_error}" if historial.mensaje_error else ""),
-                        estado=estado
-                    )
+                # Actualizar historial
+                historial.estado = resultado.get('estado', HistorialEjecucion.EstadoEjecucion.ERROR)
+                historial.fecha_fin = timezone.now()
+                historial.correos_procesados = resultado.get('correos_procesados', 0)
+                historial.correos_nuevos = resultado.get('correos_nuevos', 0)
+                historial.archivos_procesados = resultado.get('archivos_procesados', 0)
+                historial.glosas_extraidas = resultado.get('glosas_extraidas', 0)
+                historial.mensaje_error = resultado.get('mensaje_error')
+                historial.detalles = resultado.get('detalles', {})
+                historial.save()
                 
                 # Actualizar servicio
-                servicio.registrar_ejecucion(resultado.get('correos_procesados', 0))
+                servicio.ultima_ejecucion = timezone.now()
+                servicio.save()
                 
-                logger.info(f"Finalizada ejecución para servicio {servicio_id}")
                 return True
-                
-        except ServicioIngesta.DoesNotExist:
-            logger.error(f"No se encontró el servicio con ID {servicio_id}")
-            return False
-        
         except Exception as e:
             logger.error(f"Error al finalizar ejecución del servicio {servicio_id}: {str(e)}")
             return False
@@ -210,14 +186,23 @@ class IngestaSchedulerService:
                     'proxima_ejecucion': servicio.proxima_ejecucion.isoformat() if servicio.proxima_ejecucion else None
                 }
             
-            # Si se está activando, verificar que la configuración OAuth es válida
+            # Si se está activando, verificar que la configuración de correo es válida
             if activo:
-                oauth_status = OAuthVerificationService.verify_connection(servicio.tenant)
-                
-                if not oauth_status['success']:
+                try:
+                    config = EmailConfig.objects.get(tenant=servicio.tenant)
+                    success, message = config.test_connection()
+                    if not success:
+                        return {
+                            'success': False,
+                            'message': f"No se puede activar el servicio: {message}",
+                            'servicio_id': servicio.id,
+                            'servicio_activo': servicio.activo,
+                            'proxima_ejecucion': servicio.proxima_ejecucion.isoformat() if servicio.proxima_ejecucion else None
+                        }
+                except EmailConfig.DoesNotExist:
                     return {
                         'success': False,
-                        'message': f"No se puede activar el servicio: {oauth_status['message']}",
+                        'message': "No se puede activar el servicio: No hay configuración de correo",
                         'servicio_id': servicio.id,
                         'servicio_activo': servicio.activo,
                         'proxima_ejecucion': servicio.proxima_ejecucion.isoformat() if servicio.proxima_ejecucion else None
@@ -371,14 +356,6 @@ class IngestaSchedulerService:
                 return {
                     'success': False,
                     'message': "El servicio ya está en ejecución"
-                }
-            
-            # Verificar OAuth antes de ejecutar
-            oauth_status = OAuthVerificationService.verify_connection(servicio.tenant)
-            if not oauth_status['success']:
-                return {
-                    'success': False,
-                    'message': f"No se puede ejecutar el servicio: {oauth_status['message']}"
                 }
             
             # Registrar en log la solicitud manual
