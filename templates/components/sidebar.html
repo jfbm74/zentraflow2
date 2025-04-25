@@ -35,41 +35,6 @@
                     <span class="sidebar-menu-text">Glosas</span>
                 </a>
             </li>
-            
-            <!-- Menú de Ingesta de Correo -->
-            <li class="sidebar-menu-item">
-                <a href="{% url 'ingesta_correo_dashboard' %}" class="sidebar-menu-link {% if active_menu == 'ingesta_correo' %}active{% endif %}" data-tooltip="Ingesta de Correo">
-                    <span class="sidebar-menu-icon"><i class="fas fa-envelope"></i></span>
-                    <span class="sidebar-menu-text">Ingesta de Correo</span>
-                </a>
-                <ul class="sidebar-submenu {% if active_menu == 'ingesta_correo' %}show{% endif %}">
-                    
-                    <li class="sidebar-menu-item">
-                        <a href="{% url 'ingesta_programada' %}" class="sidebar-menu-link {% if active_menu == 'ingesta_correo' and active_submenu == 'ingesta_programada' %}active{% endif %}" data-tooltip="Ingesta Programada">
-                            <span class="sidebar-menu-icon"><i class="fas fa-calendar-alt"></i></span>
-                            <span class="sidebar-menu-text">Ingesta Programada</span>
-                        </a>
-                    </li>
-                    <li class="sidebar-menu-item">
-                        <a href="{% url 'historial_ingesta' %}" class="sidebar-menu-link {% if active_menu == 'ingesta_correo' and active_submenu == 'historial_ingesta' %}active{% endif %}" data-tooltip="Historial de Ingesta">
-                            <span class="sidebar-menu-icon"><i class="fas fa-history"></i></span>
-                            <span class="sidebar-menu-text">Historial de Ingesta</span>
-                        </a>
-                    </li>
-                    <li class="sidebar-menu-item">
-                        <a href="{% url 'ingesta_correo_correos' %}" class="sidebar-menu-link {% if active_menu == 'ingesta_correo' and active_submenu == 'correos' %}active{% endif %}" data-tooltip="Correos Ingesta">
-                            <span class="sidebar-menu-icon"><i class="fas fa-envelope"></i></span>
-                            <span class="sidebar-menu-text">Correos Ingesta</span>
-                        </a>
-                    </li>
-                    <li class="sidebar-menu-item">
-                        <a href="{% url 'ingesta_correo_reglas' %}" class="sidebar-menu-link {% if active_menu == 'ingesta_correo' and active_submenu == 'reglas' %}active{% endif %}" data-tooltip="Reglas de Filtrado">
-                            <span class="sidebar-menu-icon"><i class="fas fa-filter"></i></span>
-                            <span class="sidebar-menu-text">Reglas de Filtrado</span>
-                        </a>
-                    </li>
-                </ul>
-            </li>
         </ul>
         
         <div class="sidebar-divider"></div>
@@ -81,6 +46,12 @@
                 <a href="{% url 'configuracion' %}" class="sidebar-menu-link {% if active_menu == 'configuracion' %}active{% endif %}" data-tooltip="Configuración">
                     <span class="sidebar-menu-icon"><i class="fas fa-cog"></i></span>
                     <span class="sidebar-menu-text">Configuración</span>
+                </a>
+            </li>
+            <li class="sidebar-menu-item">
+                <a href="/admin/" class="sidebar-menu-link {% if active_menu == 'admin' %}active{% endif %}" data-tooltip="Admin" target="_blank">
+                    <span class="sidebar-menu-icon"><i class="fas fa-user-shield"></i></span>
+                    <span class="sidebar-menu-text">Admin</span>
                 </a>
             </li>
             <li class="sidebar-menu-item">
