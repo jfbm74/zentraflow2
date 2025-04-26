@@ -1,0 +1,97 @@
+/**
+ * Estilos para la administración de reglas de filtrado
+ */
+
+/* Estilos para reglas activas/inactivas */
+.regla-activa {
+    color: #28a745 !important;
+    font-weight: bold;
+}
+
+.regla-inactiva {
+    color: #dc3545 !important;
+    font-weight: bold;
+}
+
+.regla-row-inactiva {
+    background-color: rgba(220, 53, 69, 0.05);
+}
+
+/* Estilos para condiciones */
+.field-display_condicion {
+    max-width: 300px;
+}
+
+/* Estilos para categorías */
+.field-color_display div {
+    display: inline-block;
+    border: 1px solid #ddd;
+}
+
+/* Estilos para el tipo de regla */
+.field-tipo_regla span {
+    font-weight: bold;
+}
+
+/* Mejoras en el formulario de edición */
+.form-row {
+    margin-bottom: 10px;
+}
+
+fieldset.collapsed h2 {
+    background-color: #f8f9fa;
+}
+
+/* Estilos para los formularios inline de condiciones */
+.inline-group {
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 10px;
+    margin-top: 10px;
+}
+
+.inline-group h2 {
+    background-color: #f8f9fa;
+    padding: 8px;
+    border-radius: 4px;
+    font-size: 16px;
+    margin-top: 0;
+}
+
+.inline-related {
+    padding: 10px;
+    border-bottom: 1px solid #eee;
+}
+
+.inline-related:last-child {
+    border-bottom: none;
+}
+
+/* Estilos para la acción */
+.field-accion {
+    font-weight: bold;
+}
+
+/* Contador de usos */
+.field-conteo_usos {
+    text-align: right;
+}
+
+/* Añadir estilos para los selectores */
+select[name="accion"] option[value="procesar"] {
+    background-color: #d4edda;
+}
+
+select[name="accion"] option[value="ignorar"] {
+    background-color: #f8d7da;
+}
+
+select[name="accion"] option[value="marcar_revision"] {
+    background-color: #fff3cd;
+}
+
+/* Estilos para las estadísticas */
+.field-count_reglas {
+    font-weight: bold;
+    text-align: center;
+} 

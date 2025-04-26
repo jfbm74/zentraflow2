@@ -1,0 +1,315 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Detalle de regla: {{ regla.nombre }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Inicio</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'ingesta_correo:dashboard' %}">Ingesta</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'ingesta_correo:reglas' %}">Reglas de filtrado</a></li>
+                    <li class="breadcrumb-item active">{{ regla.nombre }}</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h1 class="h3 mb-0">
+                    <i class="fas fa-filter text-primary me-2"></i>
+                    {{ regla.nombre }}
+                </h1>
+                <div class="action-buttons">
+                    <a href="{% url 'ingesta_correo:regla_test' regla_id=regla.id %}" class="btn btn-sm btn-outline-primary me-2">
+                        <i class="fas fa-vial me-1"></i> Probar regla
+                    </a>
+                    <a href="{% url 'ingesta_correo:regla_edit' regla_id=regla.id %}" class="btn btn-sm btn-outline-success me-2">
+                        <i class="fas fa-edit me-1"></i> Editar
+                    </a>
+                    <a href="{% url 'ingesta_correo:regla_delete' regla_id=regla.id %}" class="btn btn-sm btn-outline-danger">
+                        <i class="fas fa-trash-alt me-1"></i> Eliminar
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <!-- Información general de la regla -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Información general</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <p class="mb-1 text-muted">Estado</p>
+                            <div>
+                                {% if regla.activa %}
+                                <span class="badge bg-success">Activa</span>
+                                {% else %}
+                                <span class="badge bg-secondary">Inactiva</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <p class="mb-1 text-muted">Tipo</p>
+                            <div>
+                                {% if regla.es_compuesta %}
+                                <span class="badge bg-info">Compuesta</span>
+                                {% else %}
+                                <span class="badge bg-primary">Simple</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <p class="mb-1 text-muted">Prioridad</p>
+                            <div>{{ regla.prioridad }}</div>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <p class="mb-1 text-muted">Categoría</p>
+                            <div>
+                                {% if regla.categoria %}
+                                <span class="badge" style="background-color: {{ regla.categoria.color }}">
+                                    {{ regla.categoria.nombre }}
+                                </span>
+                                {% else %}
+                                <span class="text-muted">Sin categoría</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <p class="mb-1 text-muted">Acción</p>
+                            <div>
+                                <span class="badge bg-dark">{{ regla.get_accion_display }}</span>
+                                {% if regla.parametros_accion %}
+                                <span class="text-muted small ms-2">
+                                    {% if regla.accion == "MOVER_CARPETA" %}
+                                    A carpeta: {{ regla.parametros_accion_json.carpeta }}
+                                    {% elif regla.accion == "ASIGNAR_ETIQUETA" %}
+                                    Etiqueta: {{ regla.parametros_accion_json.etiqueta }}
+                                    {% elif regla.accion == "REDIRIGIR" %}
+                                    A correo: {{ regla.parametros_accion_json.email }}
+                                    {% endif %}
+                                </span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <p class="mb-1 text-muted">Fecha de inicio</p>
+                            <div>
+                                {% if regla.fecha_inicio %}
+                                {{ regla.fecha_inicio|date:"d/m/Y H:i" }}
+                                {% else %}
+                                <span class="text-muted">Sin fecha de inicio</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <p class="mb-1 text-muted">Fecha de fin</p>
+                            <div>
+                                {% if regla.fecha_fin %}
+                                {{ regla.fecha_fin|date:"d/m/Y H:i" }}
+                                {% else %}
+                                <span class="text-muted">Sin fecha de fin</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    {% if regla.descripcion %}
+                    <div class="row">
+                        <div class="col-12">
+                            <p class="mb-1 text-muted">Descripción</p>
+                            <div class="p-3 bg-light rounded">
+                                {{ regla.descripcion }}
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Condiciones de la regla -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        {% if regla.es_compuesta %}
+                        Condiciones ({{ regla.get_operador_logico_display }})
+                        {% else %}
+                        Condición
+                        {% endif %}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if regla.es_compuesta %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 5%">#</th>
+                                        <th style="width: 30%">Campo</th>
+                                        <th style="width: 30%">Condición</th>
+                                        <th style="width: 35%">Valor</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for condicion in regla.condiciones.all %}
+                                    <tr>
+                                        <td>{{ forloop.counter }}</td>
+                                        <td>{{ condicion.get_campo_display }}</td>
+                                        <td>{{ condicion.get_condicion_display }}</td>
+                                        <td><code>{{ condicion.valor }}</code></td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <div class="d-flex">
+                                    <div class="me-3">
+                                        <span class="fw-bold">Campo:</span>
+                                        <span class="badge bg-primary">{{ regla.get_campo_display }}</span>
+                                    </div>
+                                    <div class="me-3">
+                                        <span class="fw-bold">Condición:</span>
+                                        <span class="badge bg-secondary">{{ regla.get_condicion_display }}</span>
+                                    </div>
+                                    <div>
+                                        <span class="fw-bold">Valor:</span>
+                                        <code class="ms-1">{{ regla.valor }}</code>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <!-- Estadísticas de la regla -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Estadísticas</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-center mb-3">
+                        <div class="text-center">
+                            <div class="display-4 fw-bold text-primary">{{ regla.conteo_usos }}</div>
+                            <div class="text-muted">veces aplicada</div>
+                        </div>
+                    </div>
+                    
+                    <div class="row text-center">
+                        <div class="col-6">
+                            <div class="border-end">
+                                <div class="h4 mb-0">{{ regla.fecha_creacion|date:"d/m/Y" }}</div>
+                                <div class="small text-muted">Fecha creación</div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="h4 mb-0">{{ regla.fecha_modificacion|date:"d/m/Y" }}</div>
+                            <div class="small text-muted">Última modificación</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Creación y modificación -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Información administrativa</h5>
+                </div>
+                <div class="card-body">
+                    <p class="mb-1 text-muted">Creada por</p>
+                    <div class="mb-3">
+                        {% if regla.creado_por %}
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-user-circle me-2 text-primary"></i>
+                            {{ regla.creado_por.get_full_name|default:regla.creado_por.username }}
+                        </div>
+                        {% else %}
+                        <span class="text-muted">Usuario desconocido</span>
+                        {% endif %}
+                    </div>
+
+                    <p class="mb-1 text-muted">Última modificación por</p>
+                    <div>
+                        {% if regla.modificado_por %}
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-user-edit me-2 text-primary"></i>
+                            {{ regla.modificado_por.get_full_name|default:regla.modificado_por.username }}
+                        </div>
+                        {% else %}
+                        <span class="text-muted">Usuario desconocido</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Historial de aplicación -->
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        Últimas aplicaciones
+                        <span class="badge bg-secondary ms-2">{{ historial.count }}</span>
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    {% if historial %}
+                    <div class="list-group list-group-flush">
+                        {% for item in historial %}
+                        <div class="list-group-item">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <div class="small text-muted">{{ item.fecha_aplicacion|date:"d/m/Y H:i" }}</div>
+                                    <div class="text-truncate" style="max-width: 200px;">
+                                        <a href="{% url 'ingesta_correo:correo_detail' correo_id=item.correo.id %}">
+                                            {{ item.correo.asunto|default:"(Sin asunto)" }}
+                                        </a>
+                                    </div>
+                                </div>
+                                <span class="badge bg-{{ item.resultado|yesno:'success,danger' }}">
+                                    {{ item.resultado|yesno:'Éxito,Fallido' }}
+                                </span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    
+                    {% if historial.count > 5 %}
+                    <div class="text-center p-2">
+                        <a href="#" class="btn btn-sm btn-outline-primary">
+                            Ver todo el historial
+                        </a>
+                    </div>
+                    {% endif %}
+                    
+                    {% else %}
+                    <div class="p-3 text-center text-muted">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Esta regla aún no se ha aplicado a ningún correo.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

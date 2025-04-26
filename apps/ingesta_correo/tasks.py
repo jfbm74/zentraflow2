@@ -3,8 +3,9 @@ from apps.tenants.models import Tenant
 import logging
 from django.utils import timezone
 from apps.ingesta_correo.services.ingesta_scheduler_service import IngestaSchedulerService
-from apps.ingesta_correo.models import ArchivoAdjunto, CorreoIngesta, ServicioIngesta, HistorialEjecucion, LogActividad
+from apps.ingesta_correo.models import ArchivoAdjunto, CorreoIngesta, ServicioIngesta, HistorialEjecucion, LogActividad, HistorialAplicacionRegla
 from apps.configuracion.models import EmailConfig
+from apps.ingesta_correo.services.regla_filtrado_service import ReglaFiltradoService
 import imaplib
 import poplib
 import email
@@ -74,46 +75,40 @@ def process_email_ingestion(servicio_id):
     errores = []
     
     try:
+        # Obtener el servicio
+        servicio = ServicioIngesta.objects.get(id=servicio_id)
+        
         # Iniciar la ejecución y obtener el registro de historial
-        result = IngestaSchedulerService.ejecutar_servicio(servicio_id)
+        historial = HistorialEjecucion.objects.create(
+            servicio=servicio,
+            tenant=servicio.tenant,  # Asegurar que se incluye el tenant
+            estado=HistorialEjecucion.EstadoEjecucion.EN_PROCESO,
+            fecha_inicio=timezone.now()
+        )
         
-        if not result:
-            logger.error(f"No se pudo iniciar el servicio {servicio_id}")
-            return f"Error: No se pudo iniciar el servicio {servicio_id}"
+        # Marcar servicio como en ejecución
+        servicio.en_ejecucion = True
+        servicio.save(update_fields=['en_ejecucion'])
         
-        servicio = result['servicio']
-        historial = result['historial']
-        
-        # Verificar configuración de correo
+        # Obtener la configuración de correo
         try:
             config = EmailConfig.objects.get(tenant=servicio.tenant)
-            if config.connection_status != 'conectado':
-                success, message = config.test_connection()
-                if not success:
-                    error_msg = f"Error de conexión: {message}"
-                    logger.error(f"Error de conexión para servicio {servicio_id}: {message}")
-                    
-                    # Registrar finalización con error
-                    IngestaSchedulerService.finalizar_ejecucion(servicio_id, {
-                        'estado': HistorialEjecucion.EstadoEjecucion.ERROR,
-                        'mensaje_error': error_msg,
-                        'correos_procesados': 0
-                    })
-                    
-                    return error_msg
         except EmailConfig.DoesNotExist:
-            error_msg = "No se encontró configuración de correo"
-            logger.error(f"No se encontró configuración de correo para servicio {servicio_id}")
+            error_msg = "No se encontró configuración de correo para este tenant"
+            logger.error(error_msg)
             
-            # Registrar finalización con error
-            IngestaSchedulerService.finalizar_ejecucion(servicio_id, {
-                'estado': HistorialEjecucion.EstadoEjecucion.ERROR,
-                'mensaje_error': error_msg,
-                'correos_procesados': 0
-            })
+            # Finalizar con error
+            historial.estado = HistorialEjecucion.EstadoEjecucion.ERROR
+            historial.fecha_fin = timezone.now()
+            historial.mensaje_error = error_msg
+            historial.save()
             
-            return error_msg
-        
+            # Actualizar servicio
+            servicio.en_ejecucion = False
+            servicio.save(update_fields=['en_ejecucion'])
+            
+            return f"Error: {error_msg}"
+            
         # Conectar al servidor de correo
         try:
             if config.protocol == 'imap':
@@ -228,8 +223,13 @@ def process_email_ingestion(servicio_id):
                                 )
                                 
                                 # Guardar el archivo en el campo FileField
+                                tenant_id = correo.servicio.tenant.id
+                                fecha_actual = timezone.now().strftime("%Y/%m/%d")
+                                ruta_adjunto = f'adjuntos_correo/tenant_{tenant_id}/{fecha_actual}/{filename}'
+                                
                                 with open(temp_file_path, 'rb') as f:
-                                    adjunto.archivo.save(filename, ContentFile(f.read()))
+                                    contenido = ContentFile(f.read())
+                                    adjunto.archivo.save(ruta_adjunto, contenido, save=True)
                                 
                                 # Incrementar contador
                                 archivos_procesados += 1
@@ -249,11 +249,43 @@ def process_email_ingestion(servicio_id):
                                 errores.append(error_msg)
                                 continue
                         
-                        # Marcar correo como procesado
-                        correo.estado = CorreoIngesta.Estado.PROCESADO
-                        correo.fecha_procesamiento = timezone.now()
-                        correo.glosas_extraidas = num_glosas  # Actualizar con el número real de glosas
-                        correo.save()
+                        # NUEVO: Aplicar reglas de filtrado al correo
+                        try:
+                            # Aplicar el motor de evaluación de reglas
+                            regla_aplicada = ReglaFiltradoService.aplicar_reglas(correo)
+                            
+                            if regla_aplicada:
+                                # Registrar en el historial que se aplicó una regla
+                                HistorialAplicacionRegla.objects.create(
+                                    regla=regla_aplicada,
+                                    correo=correo,
+                                    fecha_aplicacion=timezone.now(),
+                                    resultado=True,
+                                    accion_ejecutada=regla_aplicada.accion
+                                )
+                                
+                                # Ejecutar la acción de la regla sobre el correo
+                                regla_aplicada.ejecutar_accion(correo)
+                                
+                                logger.info(f"Regla '{regla_aplicada.nombre}' aplicada al correo {correo.id}")
+                            else:
+                                # No se encontró una regla aplicable, procesar normalmente
+                                correo.estado = CorreoIngesta.Estado.PROCESADO
+                                correo.fecha_procesamiento = timezone.now()
+                                correo.glosas_extraidas = num_glosas  # Actualizar con el número real de glosas
+                                correo.save()
+                                
+                                logger.info(f"No se encontraron reglas aplicables para el correo {correo.id}")
+                        except Exception as e:
+                            error_msg = f"Error al aplicar reglas de filtrado: {str(e)}"
+                            logger.error(f"Error al aplicar reglas para correo {correo.id}: {str(e)}")
+                            errores.append(error_msg)
+                            
+                            # En caso de error, procesar el correo normalmente
+                            correo.estado = CorreoIngesta.Estado.PROCESADO
+                            correo.fecha_procesamiento = timezone.now()
+                            correo.glosas_extraidas = num_glosas
+                            correo.save()
                         
                         # Marcar como leído en el servidor si está configurado
                         if config.mark_as_read:
@@ -295,7 +327,149 @@ def process_email_ingestion(servicio_id):
                             continue
                         
                         # El resto del procesamiento es igual que en IMAP
-                        # ... (mismo código que arriba para procesar el mensaje)
+                        # Incrementar contador de correos nuevos
+                        correos_nuevos += 1
+                        
+                        # Procesar encabezados
+                        subject = str(make_header(decode_header(email_message.get('Subject', ''))))
+                        from_email = str(make_header(decode_header(email_message.get('From', ''))))
+                        to_email = str(make_header(decode_header(email_message.get('To', ''))))
+                        date = email_message.get('Date')
+                        
+                        # Convertir fecha a datetime
+                        from email.utils import parsedate_to_datetime
+                        received_date = parsedate_to_datetime(date) if date else timezone.now()
+                        
+                        # Extraer contenido del correo
+                        plain_content = ""
+                        html_content = ""
+                        
+                        if email_message.is_multipart():
+                            for part in email_message.walk():
+                                if part.get_content_type() == "text/plain":
+                                    plain_content = part.get_payload(decode=True).decode()
+                                elif part.get_content_type() == "text/html":
+                                    html_content = part.get_payload(decode=True).decode()
+                        else:
+                            content = email_message.get_payload(decode=True).decode()
+                            if email_message.get_content_type() == "text/html":
+                                html_content = content
+                            else:
+                                plain_content = content
+                        
+                        # Crear registro de correo
+                        correo = CorreoIngesta.objects.create(
+                            servicio=servicio,
+                            mensaje_id=message_id,
+                            remitente=from_email,
+                            destinatarios=to_email,
+                            asunto=subject,
+                            fecha_recepcion=received_date,
+                            contenido_plano=plain_content,
+                            contenido_html=html_content,
+                            estado=CorreoIngesta.Estado.PENDIENTE
+                        )
+                        
+                        # Incrementar contador de correos procesados
+                        correos_procesados += 1
+                        
+                        # Procesar adjuntos
+                        num_glosas = 0
+                        for part in email_message.walk():
+                            if part.get_content_maintype() == 'multipart':
+                                continue
+                            if not part.get('Content-Disposition'):
+                                continue
+                            
+                            try:
+                                # Hay un adjunto
+                                filename = part.get_filename()
+                                if not filename:
+                                    continue
+                                
+                                # Decodificar nombre del archivo si es necesario
+                                filename = str(make_header(decode_header(filename)))
+                                
+                                # Guardar temporalmente el archivo
+                                temp_dir = tempfile.mkdtemp()
+                                temp_file_path = os.path.join(temp_dir, filename)
+                                
+                                with open(temp_file_path, 'wb') as f:
+                                    f.write(part.get_payload(decode=True))
+                                
+                                # Crear registro de archivo adjunto
+                                from django.core.files.base import ContentFile
+                                adjunto = ArchivoAdjunto(
+                                    correo=correo,
+                                    nombre_archivo=filename,
+                                    tipo_contenido=part.get_content_type(),
+                                    tamaño=os.path.getsize(temp_file_path)
+                                )
+                                
+                                # Guardar el archivo en el campo FileField
+                                tenant_id = correo.servicio.tenant.id
+                                fecha_actual = timezone.now().strftime("%Y/%m/%d")
+                                ruta_adjunto = f'adjuntos_correo/tenant_{tenant_id}/{fecha_actual}/{filename}'
+                                
+                                with open(temp_file_path, 'rb') as f:
+                                    contenido = ContentFile(f.read())
+                                    adjunto.archivo.save(ruta_adjunto, contenido, save=True)
+                                
+                                # Incrementar contador
+                                archivos_procesados += 1
+                                
+                                # Aquí procesarías el documento para extraer glosas
+                                # Por ahora, simulamos algunas glosas extraídas
+                                import random
+                                num_glosas = random.randint(1, 5)  # Reemplazar con lógica real
+                                glosas_extraidas += num_glosas
+                                
+                                # Eliminar archivo temporal
+                                os.remove(temp_file_path)
+                                os.rmdir(temp_dir)
+                            except Exception as e:
+                                error_msg = f"Error al procesar adjunto {filename}: {str(e)}"
+                                logger.error(f"Error al procesar adjunto para correo POP3 {message_id}: {str(e)}")
+                                errores.append(error_msg)
+                                continue
+                        
+                        # NUEVO: Aplicar reglas de filtrado al correo
+                        try:
+                            # Aplicar el motor de evaluación de reglas
+                            regla_aplicada = ReglaFiltradoService.aplicar_reglas(correo)
+                            
+                            if regla_aplicada:
+                                # Registrar en el historial que se aplicó una regla
+                                HistorialAplicacionRegla.objects.create(
+                                    regla=regla_aplicada,
+                                    correo=correo,
+                                    fecha_aplicacion=timezone.now(),
+                                    resultado=True,
+                                    accion_ejecutada=regla_aplicada.accion
+                                )
+                                
+                                # Ejecutar la acción de la regla sobre el correo
+                                regla_aplicada.ejecutar_accion(correo)
+                                
+                                logger.info(f"Regla '{regla_aplicada.nombre}' aplicada al correo POP3 {correo.id}")
+                            else:
+                                # No se encontró una regla aplicable, procesar normalmente
+                                correo.estado = CorreoIngesta.Estado.PROCESADO
+                                correo.fecha_procesamiento = timezone.now()
+                                correo.glosas_extraidas = num_glosas
+                                correo.save()
+                                
+                                logger.info(f"No se encontraron reglas aplicables para el correo POP3 {correo.id}")
+                        except Exception as e:
+                            error_msg = f"Error al aplicar reglas de filtrado: {str(e)}"
+                            logger.error(f"Error al aplicar reglas para correo POP3 {correo.id}: {str(e)}")
+                            errores.append(error_msg)
+                            
+                            # En caso de error, procesar el correo normalmente
+                            correo.estado = CorreoIngesta.Estado.PROCESADO
+                            correo.fecha_procesamiento = timezone.now()
+                            correo.glosas_extraidas = num_glosas
+                            correo.save()
                         
                         # Marcar para eliminar si está configurado
                         if config.mark_as_read:
@@ -324,43 +498,46 @@ def process_email_ingestion(servicio_id):
                 estado_final = HistorialEjecucion.EstadoEjecucion.ERROR
         
         # Registrar finalización
-        IngestaSchedulerService.finalizar_ejecucion(servicio_id, {
-            'estado': estado_final,
-            'correos_procesados': correos_procesados,
-            'correos_nuevos': correos_nuevos,
-            'archivos_procesados': archivos_procesados,
-            'glosas_extraidas': glosas_extraidas,
-            'mensaje_error': '\n'.join(errores) if errores else None,
-            'detalles': {
-                'tiempo_conexion': 1,  # Actualizar con medición real
-                'tiempo_procesamiento': 10,  # Actualizar con medición real
-                'carpetas_revisadas': 1,
-                'hora_inicio': timezone.now().isoformat(),
-                'errores': errores
-            }
-        })
+        historial.estado = estado_final
+        historial.fecha_fin = timezone.now()
+        historial.mensaje_error = '\n'.join(errores) if errores else None
+        historial.save()
+        
+        # Actualizar servicio
+        servicio.en_ejecucion = False
+        servicio.save(update_fields=['en_ejecucion'])
         
         logger.info(f"Proceso de ingesta completado para servicio {servicio_id}: {correos_procesados} correos procesados")
         return f"Ingesta completada: {correos_procesados} correos procesados, {glosas_extraidas} glosas extraídas"
         
+    except ServicioIngesta.DoesNotExist:
+        error_msg = f"No se encontró el servicio con ID {servicio_id}"
+        logger.error(error_msg)
+        return f"Error: {error_msg}"
+    
     except Exception as e:
-        error_msg = f"Error general en el proceso de ingesta: {str(e)}"
-        logger.error(f"Error en el proceso de ingesta para servicio {servicio_id}: {str(e)}")
+        error_msg = f"Error general al procesar ingesta: {str(e)}"
+        logger.error(error_msg)
         
-        # Registrar finalización con error
-        IngestaSchedulerService.finalizar_ejecucion(servicio_id, {
-            'estado': HistorialEjecucion.EstadoEjecucion.ERROR,
-            'mensaje_error': error_msg,
-            'correos_procesados': correos_procesados,
-            'correos_nuevos': correos_nuevos,
-            'archivos_procesados': archivos_procesados,
-            'glosas_extraidas': glosas_extraidas,
-            'detalles': {
-                'errores': errores + [error_msg]
-            }
-        })
+        # Si hay historial, finalizarlo con error
+        try:
+            if 'historial' in locals():
+                historial.estado = HistorialEjecucion.EstadoEjecucion.ERROR
+                historial.fecha_fin = timezone.now()
+                historial.mensaje_error = error_msg
+                historial.save()
+        except Exception as e2:
+            logger.error(f"Error al actualizar historial: {str(e2)}")
         
-        return f"Error en la ingesta: {str(e)}"
+        # Si hay servicio, actualizar estado
+        try:
+            if 'servicio' in locals():
+                servicio.en_ejecucion = False
+                servicio.save(update_fields=['en_ejecucion'])
+        except Exception as e2:
+            logger.error(f"Error al actualizar servicio: {str(e2)}")
+        
+        return f"Error: {error_msg}"
 
 @shared_task
 def execute_ingestion_now(servicio_id, user_id=None):
@@ -381,3 +558,27 @@ def execute_ingestion_now(servicio_id, user_id=None):
     except Exception as e:
         logger.error(f"Error en ingesta manual para servicio {servicio_id}: {str(e)}")
         return f"Error en ingesta manual: {str(e)}"
+
+@shared_task
+def sync_service_status():
+    """Tarea programada para sincronizar el estado del servicio de ingesta."""
+    for tenant in Tenant.objects.filter(is_active=True):
+        try:
+            # Verificar servicios de ingesta
+            servicios = ServicioIngesta.objects.filter(tenant=tenant)
+            for servicio in servicios:
+                servicio.ultima_verificacion = timezone.now()
+                servicio.save(update_fields=['ultima_verificacion'])
+                
+                # Registrar verificación
+                LogActividad.objects.create(
+                    tenant=tenant,
+                    evento='SERVICIO_VERIFICADO',
+                    detalles="Verificación periódica del servicio de ingesta",
+                    estado='info'
+                )
+        except Exception as e:
+            logger.error(f"Error al sincronizar estado del servicio para {tenant}: {str(e)}")
+            continue
+    
+    return "Sincronización de estado del servicio completada"

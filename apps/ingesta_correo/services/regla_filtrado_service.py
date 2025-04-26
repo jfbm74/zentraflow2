@@ -8,7 +8,7 @@ import logging
 from django.db import transaction
 from django.utils import timezone
 from django.forms import ValidationError
-from apps.ingesta_correo.models import ReglaFiltrado, ServicioIngesta, LogActividad
+from apps.ingesta_correo.models import ReglaFiltrado, ServicioIngesta, LogActividad, RegistroLogRegla
 from apps.ingesta_correo.services.regla_test_service import ReglaTestService
 
 logger = logging.getLogger(__name__)
@@ -379,11 +379,56 @@ class ReglaFiltradoService:
             ReglaFiltrado: La primera regla que coincide con el correo, o None si ninguna coincide
         """
         try:
+            # Registrar inicio de evaluación en el log
+            logger.info(f"Iniciando evaluación de reglas para correo {correo.id} (asunto: '{correo.asunto}')")
+            
+            # Registrar en el modelo de log detallado
+            RegistroLogRegla.log(
+                tenant=correo.servicio.tenant,
+                nivel=RegistroLogRegla.TipoLog.INFO,
+                mensaje=f"Iniciando evaluación de reglas para correo (asunto: '{correo.asunto}')",
+                correo=correo,
+                datos_contexto={
+                    'correo_id': correo.id,
+                    'asunto': correo.asunto,
+                    'remitente': correo.remitente,
+                    'fecha_recepcion': correo.fecha_recepcion.isoformat()
+                }
+            )
+            
             # Obtener reglas activas ordenadas por prioridad
             reglas = ReglaFiltrado.objects.filter(
                 servicio=correo.servicio,
                 activa=True
             ).order_by('prioridad')
+            
+            # Si no hay reglas, registrar y retornar
+            if not reglas.exists():
+                mensaje = f"No hay reglas activas para el servicio {correo.servicio.id}"
+                logger.info(mensaje)
+                
+                # Registrar en el modelo de log detallado
+                RegistroLogRegla.log(
+                    tenant=correo.servicio.tenant,
+                    nivel=RegistroLogRegla.TipoLog.INFO,
+                    mensaje=mensaje,
+                    correo=correo
+                )
+                
+                return None
+                
+            # Registrar número de reglas encontradas
+            mensaje = f"Se encontraron {reglas.count()} reglas activas para evaluar"
+            logger.info(mensaje)
+            
+            # Registrar en el modelo de log detallado
+            RegistroLogRegla.log(
+                tenant=correo.servicio.tenant,
+                nivel=RegistroLogRegla.TipoLog.INFO,
+                mensaje=mensaje,
+                correo=correo,
+                datos_contexto={'num_reglas': reglas.count()}
+            )
             
             # Preparar datos para evaluación
             datos_correo = {
@@ -396,14 +441,94 @@ class ReglaFiltradoService:
             
             # Evaluar cada regla en orden
             for regla in reglas:
+                mensaje_debug = f"Evaluando regla '{regla.nombre}' (ID: {regla.id}, prioridad: {regla.prioridad})"
+                logger.info(mensaje_debug)
+                
+                # Registrar inicio de evaluación de esta regla específica
+                RegistroLogRegla.log(
+                    tenant=correo.servicio.tenant,
+                    nivel=RegistroLogRegla.TipoLog.INFO,
+                    mensaje=mensaje_debug,
+                    regla=regla,
+                    correo=correo,
+                    datos_contexto={
+                        'regla_id': regla.id,
+                        'regla_nombre': regla.nombre,
+                        'regla_prioridad': regla.prioridad
+                    }
+                )
+                
+                # Registrar detalles de la regla para diagnóstico
+                logger.debug(f"Regla simple: campo='{regla.campo}', condición='{regla.condicion}', valor='{regla.valor}'")
+                
+                # Registrar los datos de prueba para diagnóstico
+                logger.debug(f"Datos de correo para evaluación: asunto='{datos_correo['asunto'][:50]}...' si es más largo")
+                
                 resultado = ReglaTestService.evaluar_regla_completa(regla, datos_correo)
                 
+                # Registro detallado de la evaluación
                 if resultado['cumple']:
-                    logger.info(f"Regla '{regla.nombre}' coincide con correo {correo.id}: {resultado['mensaje']}")
+                    mensaje_info = f"Regla '{regla.nombre}' coincide con correo {correo.id}: {resultado['mensaje']}"
+                    logger.info(mensaje_info)
+                    
+                    # Registrar resultado positivo en el modelo de log detallado
+                    RegistroLogRegla.log(
+                        tenant=correo.servicio.tenant,
+                        nivel=RegistroLogRegla.TipoLog.INFO,
+                        mensaje=mensaje_info,
+                        regla=regla,
+                        correo=correo,
+                        datos_contexto={
+                            'resultado': resultado,
+                            'coincidencia': True
+                        }
+                    )
+                    
+                    # Registrar la coincidencia en las estadísticas de la regla
+                    regla.registrar_uso()
+                    
                     return regla
+                else:
+                    mensaje_debug = f"Regla '{regla.nombre}' no coincide: {resultado['mensaje']}"
+                    logger.debug(mensaje_debug)
+                    
+                    # Registrar resultado negativo en el modelo de log detallado
+                    RegistroLogRegla.log(
+                        tenant=correo.servicio.tenant,
+                        nivel=RegistroLogRegla.TipoLog.DEBUG,
+                        mensaje=mensaje_debug,
+                        regla=regla,
+                        correo=correo,
+                        datos_contexto={
+                            'resultado': resultado,
+                            'coincidencia': False
+                        }
+                    )
+            
+            mensaje_info = f"Ninguna regla coincide con el correo {correo.id}"
+            logger.info(mensaje_info)
+            
+            # Registrar que no hubo coincidencias
+            RegistroLogRegla.log(
+                tenant=correo.servicio.tenant,
+                nivel=RegistroLogRegla.TipoLog.INFO,
+                mensaje=mensaje_info,
+                correo=correo
+            )
             
             return None
             
         except Exception as e:
-            logger.error(f"Error al aplicar reglas a correo {correo.id}: {str(e)}")
+            mensaje_error = f"Error al aplicar reglas a correo {correo.id}: {str(e)}"
+            logger.error(mensaje_error)
+            
+            # Registrar el error en el log detallado
+            RegistroLogRegla.log(
+                tenant=correo.servicio.tenant,
+                nivel=RegistroLogRegla.TipoLog.ERROR,
+                mensaje=mensaje_error,
+                correo=correo,
+                datos_contexto={'error': str(e)}
+            )
+            
             return None

@@ -46,6 +46,11 @@ class DashboardIngestaView(LoginRequiredMixin, TemplateView):
         # Obtener actividad reciente
         context['recent_activity'] = DashboardService.get_recent_activity(tenant)
         
+        # Obtener correos recientes (los últimos 5)
+        context['correos_recientes'] = CorreoIngesta.objects.filter(
+            servicio__tenant=tenant
+        ).order_by('-fecha_recepcion')[:5]
+        
         return context
 
 class ApiDashboardIngestaView(LoginRequiredMixin, View):

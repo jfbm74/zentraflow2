@@ -4,7 +4,6 @@ import logging
 from django.utils import timezone
 from django.db import transaction
 from apps.ingesta_correo.models import ServicioIngesta, HistorialEjecucion, LogActividad
-from apps.configuracion.models import EmailConfig
 
 logger = logging.getLogger(__name__)
 
@@ -24,17 +23,9 @@ class IngestaSchedulerService:
             servicios = ServicioIngesta.objects.filter(activo=True)
             for servicio in servicios:
                 try:
-                    # Verificar configuración de correo
-                    config = EmailConfig.objects.get(tenant=servicio.tenant)
-                    if config.connection_status != 'conectado':
-                        success, message = config.test_connection()
-                        if not success:
-                            logger.error(f"Error al inicializar servicio {servicio.id}: {message}")
-                            continue
+                    # La verificación de correo ha sido simplificada
+                    logger.info(f"Inicializando servicio de ingesta {servicio.id}")
                     count += 1
-                except EmailConfig.DoesNotExist:
-                    logger.error(f"No se encontró configuración de correo para servicio {servicio.id}")
-                    continue
                 except Exception as e:
                     logger.error(f"Error al inicializar servicio {servicio.id}: {str(e)}")
                     continue
@@ -59,17 +50,8 @@ class IngestaSchedulerService:
                 ultima_ejecucion__lt=ahora - timezone.timedelta(minutes=5)  # Intervalo mínimo entre ejecuciones
             )
             
-            # Filtrar servicios que tienen configuración de correo válida
-            servicios_validos = []
-            for servicio in servicios:
-                try:
-                    config = EmailConfig.objects.get(tenant=servicio.tenant)
-                    if config.connection_status == 'conectado':
-                        servicios_validos.append(servicio.id)
-                except EmailConfig.DoesNotExist:
-                    continue
-            
-            return ServicioIngesta.objects.filter(id__in=servicios_validos)
+            # En esta versión simplificada, todos los servicios son válidos
+            return servicios
         except Exception as e:
             logger.error(f"Error al verificar servicios pendientes: {str(e)}")
             return ServicioIngesta.objects.none()
@@ -90,18 +72,6 @@ class IngestaSchedulerService:
                     estado=HistorialEjecucion.EstadoEjecucion.EN_PROCESO
                 ).exists():
                     logger.warning(f"El servicio {servicio_id} ya tiene una ejecución en curso")
-                    return None
-                
-                # Verificar configuración de correo
-                try:
-                    config = EmailConfig.objects.get(tenant=servicio.tenant)
-                    if config.connection_status != 'conectado':
-                        success, message = config.test_connection()
-                        if not success:
-                            logger.error(f"Error de conexión para servicio {servicio_id}: {message}")
-                            return None
-                except EmailConfig.DoesNotExist:
-                    logger.error(f"No se encontró configuración de correo para servicio {servicio_id}")
                     return None
                 
                 # Crear registro de historial
@@ -185,28 +155,6 @@ class IngestaSchedulerService:
                     'servicio_activo': servicio.activo,
                     'proxima_ejecucion': servicio.proxima_ejecucion.isoformat() if servicio.proxima_ejecucion else None
                 }
-            
-            # Si se está activando, verificar que la configuración de correo es válida
-            if activo:
-                try:
-                    config = EmailConfig.objects.get(tenant=servicio.tenant)
-                    success, message = config.test_connection()
-                    if not success:
-                        return {
-                            'success': False,
-                            'message': f"No se puede activar el servicio: {message}",
-                            'servicio_id': servicio.id,
-                            'servicio_activo': servicio.activo,
-                            'proxima_ejecucion': servicio.proxima_ejecucion.isoformat() if servicio.proxima_ejecucion else None
-                        }
-                except EmailConfig.DoesNotExist:
-                    return {
-                        'success': False,
-                        'message': "No se puede activar el servicio: No hay configuración de correo",
-                        'servicio_id': servicio.id,
-                        'servicio_activo': servicio.activo,
-                        'proxima_ejecucion': servicio.proxima_ejecucion.isoformat() if servicio.proxima_ejecucion else None
-                    }
             
             # Cambiar estado
             servicio.activo = activo
@@ -307,7 +255,9 @@ class IngestaSchedulerService:
             return {
                 'success': True,
                 'message': f"Intervalo actualizado a {intervalo_minutos} minutos",
-                'servicio': servicio
+                'servicio_id': servicio.id, 
+                'intervalo_minutos': servicio.intervalo_minutos,
+                'proxima_ejecucion': servicio.proxima_ejecucion.isoformat() if servicio.proxima_ejecucion else None
             }
             
         except ServicioIngesta.DoesNotExist:

@@ -86,9 +86,12 @@
     }
     
     .rule-body {
-        padding: 1rem;
+        padding: 1.5rem;
         background-color: var(--gray-50);
-        display: none;
+        border-radius: 0 0 var(--border-radius) var(--border-radius);
+        transition: all 0.3s ease;
+        box-shadow: inset 0 2px 5px rgba(0,0,0,0.05);
+        display: none; /* Inicialmente oculto, se mostrará con JavaScript */
     }
     
     .rule-body.show {
@@ -96,22 +99,38 @@
     }
     
     .rule-criteria {
-        margin-top: 0.5rem;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1rem;
     }
     
     .criteria-item {
+        background-color: white;
+        padding: 1rem;
+        border-radius: var(--border-radius);
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
         display: flex;
-        margin-bottom: 0.5rem;
+        flex-direction: column;
     }
     
     .criteria-label {
-        font-weight: 500;
-        min-width: 120px;
-        color: var(--gray-600);
+        font-weight: 600;
+        color: var(--gray-500);
+        margin-bottom: 0.5rem;
+        font-size: 0.9rem;
+        letter-spacing: 0.5px;
     }
     
     .criteria-value {
         color: var(--gray-800);
+        font-size: 1rem;
+        font-weight: 500;
+    }
+    
+    /* Colores específicos para algunos valores */
+    .criteria-value .badge {
+        padding: 6px 10px;
+        font-weight: 500;
     }
     
     .rule-badge {
@@ -126,6 +145,29 @@
         border-radius: 50rem;
         background-color: var(--gray-100);
         color: var(--gray-700);
+    }
+    
+    .rule-condition {
+        display: inline-block;
+        margin-left: 0.5rem;
+        font-size: 0.85em;
+        color: var(--gray-600);
+        font-style: italic;
+    }
+    
+    .rule-active-badge {
+        display: inline-block;
+        margin-left: 0.5rem;
+        padding: 0.25em 0.6em;
+        font-size: 0.75em;
+        font-weight: 500;
+        background-color: rgba(43, 174, 102, 0.15);
+        color: #2bae66;
+        border-radius: 50rem;
+    }
+    
+    .rule-active-badge i {
+        margin-right: 0.25rem;
     }
     
     .rule-badge.field-asunto {
@@ -168,6 +210,36 @@
         color: var(--info-color);
     }
     
+    /* Estilos para el icono de expandir/contraer */
+    .toggle-icon {
+        margin-left: 10px;
+        font-size: 0.8rem;
+        color: var(--gray-400);
+        transition: transform 0.3s ease;
+    }
+    
+    .toggle-icon.up {
+        transform: rotate(180deg);
+    }
+    
+    /* Estilos mejorados para el botón de toggle */
+    .rule-action.toggle-rule {
+        padding: 5px 8px;
+        border-radius: 20px;
+        background-color: transparent;
+        transition: all 0.3s ease;
+    }
+    
+    .rule-action.toggle-rule i.fa-toggle-on {
+        color: var(--success-color);
+        font-size: 1.2rem;
+    }
+    
+    .rule-action.toggle-rule i.fa-toggle-off {
+        color: var(--gray-500);
+        font-size: 1.2rem;
+    }
+    
     /* Modal de reglas */
     .modal-rule .modal-header {
         background: linear-gradient(to right, var(--primary-light), white);
@@ -203,6 +275,114 @@
         opacity: 0.5;
         box-shadow: var(--box-shadow-lg);
     }
+    
+    /* Detalle de regla mejorado */
+    .detail-card {
+        background-color: white;
+        border-radius: var(--border-radius);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        overflow: hidden;
+    }
+    
+    .detail-header {
+        padding: 1rem 1.5rem;
+        background: linear-gradient(to right, rgba(3, 135, 194, 0.1), rgba(3, 135, 194, 0.05));
+        border-bottom: 1px solid var(--gray-200);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .detail-header h5 {
+        margin: 0;
+        color: var(--gray-800);
+        font-weight: 600;
+    }
+    
+    .detail-status .badge {
+        font-size: 0.8rem;
+        padding: 0.4rem 0.8rem;
+    }
+    
+    .detail-sections {
+        padding: 1.5rem;
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+    
+    @media (min-width: 768px) {
+        .detail-sections {
+            grid-template-columns: repeat(2, 1fr);
+        }
+        
+        .detail-section:last-child {
+            grid-column: span 2;
+        }
+    }
+    
+    .detail-section {
+        position: relative;
+    }
+    
+    .section-title {
+        margin: 0 0 1rem 0;
+        font-size: 1rem;
+        color: var(--gray-700);
+        font-weight: 600;
+        border-bottom: 2px solid var(--primary-light);
+        padding-bottom: 0.5rem;
+        display: inline-block;
+    }
+    
+    .condition-card, .action-card, .config-card {
+        background-color: var(--gray-50);
+        border-radius: var(--border-radius);
+        padding: 1.2rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    
+    .condition-field {
+        margin-bottom: 0.8rem;
+    }
+    
+    .field-label, .operator-label, .config-label {
+        color: var(--gray-600);
+        font-size: 0.9rem;
+        margin-right: 0.5rem;
+    }
+    
+    .field-value, .operator-value, .config-value {
+        font-weight: 500;
+        color: var(--gray-800);
+    }
+    
+    .operator-value {
+        font-family: monospace;
+        background-color: var(--gray-100);
+        padding: 0.2rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.9rem;
+    }
+    
+    .action-badge {
+        font-size: 0.9rem;
+        padding: 0.4rem 0.8rem;
+    }
+    
+    .config-item {
+        margin-bottom: 0.8rem;
+        display: flex;
+        align-items: center;
+    }
+    
+    .config-item:last-child {
+        margin-bottom: 0;
+    }
+    
+    .config-label {
+        min-width: 120px;
+    }
 </style>
 {% endblock %}
 
@@ -211,11 +391,14 @@
 <div class="page-title">
     <h1>Reglas de Filtrado</h1>
     <div>
-        <button id="btnAddRule" class="btn-action">
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#ruleModal">
             <i class="fas fa-plus-circle"></i> Crear Nueva Regla
         </button>
     </div>
 </div>
+
+<!-- Contenedor para mensajes de retroalimentación -->
+<div class="messages-container"></div>
 
 <!-- Estado del servicio -->
 {% if not servicio_existe %}
@@ -258,17 +441,22 @@
                     <span class="handle"><i class="fas fa-grip-lines"></i></span>
                     <span class="rule-status {% if regla.activa %}active{% else %}inactive{% endif %}"></span>
                     {{ regla.nombre }}
+                    {% if regla.activa %}
+                    <span class="rule-active-badge"><i class="fas fa-check-circle"></i> Activa</span>
+                    {% endif %}
                     <span class="rule-badge field-{{ regla.campo|lower }}">{{ regla.get_campo_display }}</span>
+                    <span class="rule-condition">{{ regla.get_condicion_display }}: "{{ regla.valor }}"</span>
                     <span class="rule-badge action-{{ regla.accion|lower }}">{{ regla.get_accion_display }}</span>
+                    <span class="toggle-icon"><i class="fas fa-chevron-down"></i></span>
                 </div>
                 <div class="rule-actions">
-                    <button class="rule-action toggle-rule" onclick="toggleRuleState(event, {{ regla.id }}, {% if regla.activa %}false{% else %}true{% endif %})" title="{% if regla.activa %}Desactivar{% else %}Activar{% endif %}">
+                    <button class="rule-action toggle-rule" onclick="toggleRuleState(event, this)" data-id="{{ regla.id }}" title="{% if regla.activa %}Desactivar{% else %}Activar{% endif %}">
                         <i class="fas {% if regla.activa %}fa-toggle-on{% else %}fa-toggle-off{% endif %}"></i>
                     </button>
                     <button class="rule-action edit-rule" onclick="editRule(event, {{ regla.id }})" title="Editar">
                         <i class="fas fa-edit"></i>
                     </button>
-                    <button class="rule-action delete delete-rule" onclick="deleteRule(event, {{ regla.id }})" title="Eliminar">
+                    <button class="rule-action delete delete-rule" onclick="deleteRule(event, this)" data-id="{{ regla.id }}" title="Eliminar">
                         <i class="fas fa-trash-alt"></i>
                     </button>
                 </div>
@@ -276,34 +464,26 @@
             <div class="rule-body">
                 <div class="rule-criteria">
                     <div class="criteria-item">
-                        <div class="criteria-label">Campo:</div>
+                        <div class="criteria-label">Campo</div>
                         <div class="criteria-value">{{ regla.get_campo_display }}</div>
                     </div>
                     <div class="criteria-item">
-                        <div class="criteria-label">Condición:</div>
+                        <div class="criteria-label">Condición</div>
                         <div class="criteria-value">{{ regla.get_condicion_display }}</div>
                     </div>
                     <div class="criteria-item">
-                        <div class="criteria-label">Valor:</div>
+                        <div class="criteria-label">Valor</div>
                         <div class="criteria-value">{{ regla.valor }}</div>
                     </div>
                     <div class="criteria-item">
-                        <div class="criteria-label">Acción:</div>
-                        <div class="criteria-value">{{ regla.get_accion_display }}</div>
-                    </div>
-                    <div class="criteria-item">
-                        <div class="criteria-label">Prioridad:</div>
-                        <div class="criteria-value">{{ regla.prioridad }}</div>
-                    </div>
-                    <div class="criteria-item">
-                        <div class="criteria-label">Estado:</div>
+                        <div class="criteria-label">Acción</div>
                         <div class="criteria-value">
-                            {% if regla.activa %}
-                            <span class="badge bg-success">Activa</span>
-                            {% else %}
-                            <span class="badge bg-secondary">Inactiva</span>
-                            {% endif %}
+                            <span class="rule-badge action-{{ regla.accion|lower }}">{{ regla.get_accion_display }}</span>
                         </div>
+                    </div>
+                    <div class="criteria-item">
+                        <div class="criteria-label">Prioridad</div>
+                        <div class="criteria-value">{{ regla.prioridad }}</div>
                     </div>
                 </div>
             </div>
@@ -316,7 +496,7 @@
             </div>
             <h3>No hay reglas de filtrado</h3>
             <p class="empty-rules-text">Las reglas de filtrado te permiten procesar automáticamente los correos entrantes según criterios específicos.</p>
-            <button id="btnEmptyAddRule" class="btn-action">
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#ruleModal">
                 <i class="fas fa-plus-circle"></i> Crear Primera Regla
             </button>
         </div>
@@ -447,10 +627,10 @@
                 </form>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn-secondary-action" data-bs-dismiss="modal">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
                     <i class="fas fa-times"></i> Cancelar
                 </button>
-                <button type="button" class="btn-action" id="btnSaveRule">
+                <button type="button" class="btn btn-primary" id="btnSaveRule">
                     <i class="fas fa-save"></i> Guardar Regla
                 </button>
             </div>
@@ -470,7 +650,7 @@
                 <p>¿Estás seguro de que deseas eliminar esta regla? Esta acción no se puede deshacer.</p>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn-secondary-action" data-bs-dismiss="modal">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
                     <i class="fas fa-times"></i> Cancelar
                 </button>
                 <button type="button" class="btn btn-danger" id="btnConfirmDelete">
@@ -483,6 +663,56 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="{% static 'js/ingesta_correo/reglas_common.js' %}"></script>
 <script src="{% static 'js/ingesta_correo/reglas_filtrado.js' %}"></script>
 <script src="{% static 'js/ingesta_correo/reglas_test.js' %}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Documento listo, configurando evento para botón guardar');
+    
+    // Variable para controlar si estamos editando o creando
+    let isEditing = false;
+    
+    // Evento para controlar el formulario cuando se abre el modal
+    const ruleModal = document.getElementById('ruleModal');
+    if (ruleModal) {
+        ruleModal.addEventListener('show.bs.modal', function(event) {
+            console.log('Modal abriéndose');
+            
+            // Solo resetear el formulario si no estamos editando
+            if (!isEditing) {
+                console.log('Creando nueva regla, reseteando formulario');
+                resetForm();
+            } else {
+                console.log('Editando regla existente, manteniendo datos');
+                // No hacemos nada, los datos ya están cargados por editRule()
+            }
+        });
+        
+        // Cuando se cierra el modal, reseteamos el modo edición
+        ruleModal.addEventListener('hidden.bs.modal', function() {
+            isEditing = false;
+        });
+    }
+    
+    // Función para resetear formulario (solo para nueva regla)
+    function resetForm() {
+        const ruleForm = document.getElementById('ruleForm');
+        if (ruleForm) ruleForm.reset();
+        
+        const ruleId = document.getElementById('ruleId');
+        if (ruleId) ruleId.value = '';
+        
+        const ruleModalLabel = document.getElementById('ruleModalLabel');
+        if (ruleModalLabel) ruleModalLabel.textContent = 'Nueva Regla de Filtrado';
+        
+        const rulePriority = document.getElementById('rulePriority');
+        if (rulePriority) rulePriority.value = '10';
+        
+        // Ocultar sección de prueba
+        const testRuleSection = document.getElementById('testRuleSection');
+        if (testRuleSection) testRuleSection.style.display = 'none';
+    }
+});
+</script>
 {% endblock %}

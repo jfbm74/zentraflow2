@@ -68,9 +68,16 @@
                         </div>
                     {% else %}
                         <div class="row">
+                            <!-- Columna de configuración de Ingesta -->
                             <div class="col-md-6">
+                                <h6 class="mb-3"><i class="fas fa-cogs me-2"></i> Configuración de Ingesta</h6>
+                                
                                 <div class="status-item">
-                                    <div class="status-label">Estado:</div>
+                                    <div class="status-label">
+                                        Estado:
+                                        <i class="fas fa-info-circle text-secondary opacity-25" data-bs-toggle="tooltip" 
+                                           title="Indica si el servicio está activo o inactivo. Cuando está activo, verificará automáticamente el correo según el intervalo configurado."></i>
+                                    </div>
                                     <div class="status-value" id="service-status">
                                         {% if servicio.activo %}
                                             <span class="text-success"><i class="fas fa-circle"></i> Activo</span>
@@ -81,7 +88,11 @@
                                 </div>
                                 
                                 <div class="status-item">
-                                    <div class="status-label">Intervalo:</div>
+                                    <div class="status-label">
+                                        Intervalo:
+                                        <i class="fas fa-info-circle text-secondary opacity-25" data-bs-toggle="tooltip" 
+                                           title="Define cada cuántos minutos se ejecutará la verificación automática. El valor mínimo es 1 minuto y el máximo es 1440 minutos (24 horas)."></i>
+                                    </div>
                                     <div class="status-value" id="service-interval">
                                         <div class="input-group input-group-sm" style="max-width: 200px;">
                                             <input type="number" class="form-control" id="intervaloMinutos" value="{{ servicio.intervalo_minutos }}" min="1" max="1440">
@@ -94,7 +105,11 @@
                                 </div>
                                 
                                 <div class="status-item">
-                                    <div class="status-label">Próxima ejecución:</div>
+                                    <div class="status-label">
+                                        Próxima ejecución:
+                                        <i class="fas fa-info-circle text-secondary opacity-25" data-bs-toggle="tooltip" 
+                                           title="Muestra la fecha y hora programada para la siguiente verificación automática. Se calcula sumando el intervalo a la última ejecución."></i>
+                                    </div>
                                     <div class="status-value" id="next-execution">
                                         {% if servicio.proxima_ejecucion %}
                                             {{ servicio.proxima_ejecucion|date:"d/m/Y H:i:s" }}
@@ -106,7 +121,11 @@
                                 </div>
                                 
                                 <div class="status-item">
-                                    <div class="status-label">Estado de ejecución:</div>
+                                    <div class="status-label">
+                                        Estado de ejecución:
+                                        <i class="fas fa-info-circle text-secondary opacity-25" data-bs-toggle="tooltip" 
+                                           title="Indica si el servicio está actualmente procesando correos. 'En ejecución' significa que está verificando correos en este momento."></i>
+                                    </div>
                                     <div class="status-value" id="execution-status">
                                         {% if servicio.en_ejecucion %}
                                             <span class="badge bg-primary">
@@ -117,11 +136,13 @@
                                         {% endif %}
                                     </div>
                                 </div>
-                            </div>
-                            
-                            <div class="col-md-6">
+                                
                                 <div class="status-item">
-                                    <div class="status-label">Última ejecución:</div>
+                                    <div class="status-label">
+                                        Última ejecución:
+                                        <i class="fas fa-info-circle text-secondary opacity-25" data-bs-toggle="tooltip" 
+                                           title="Muestra la fecha y hora de la última verificación realizada. Si nunca se ha ejecutado, mostrará 'Nunca'."></i>
+                                    </div>
                                     <div class="status-value" id="last-execution">
                                         {% if servicio.ultima_ejecucion %}
                                             {{ servicio.ultima_ejecucion|date:"d/m/Y H:i:s" }}
@@ -132,15 +153,28 @@
                                 </div>
                                 
                                 <div class="status-item">
-                                    <div class="status-label">Correos procesados:</div>
+                                    <div class="status-label">
+                                        Correos procesados:
+                                        <i class="fas fa-info-circle text-secondary opacity-25" data-bs-toggle="tooltip" 
+                                           title="Muestra estadísticas de los correos procesados. Total: número acumulado desde que se inició el servicio. Última ejecución: número de correos en la última verificación."></i>
+                                    </div>
                                     <div class="status-value" id="processed-emails">
                                         <strong>{{ servicio.correos_procesados_total }}</strong> en total,
                                         <strong>{{ servicio.correos_ultima_ejecucion }}</strong> en la última ejecución
                                     </div>
                                 </div>
+                            </div>
+                            
+                            <!-- Columna de configuración de la Cuenta de Correo -->
+                            <div class="col-md-6">
+                                <h6 class="mb-3"><i class="fas fa-envelope me-2"></i> Configuración de la Cuenta</h6>
                                 
                                 <div class="status-item">
-                                    <div class="status-label">Cuenta conectada:</div>
+                                    <div class="status-label">
+                                        Cuenta conectada:
+                                        <i class="fas fa-info-circle text-secondary opacity-25" data-bs-toggle="tooltip" 
+                                           title="Muestra la dirección de correo configurada para la ingesta. Si no hay cuenta configurada, muestra un botón para ir a la configuración."></i>
+                                    </div>
                                     <div class="status-value">
                                         {% if oauth_status.status.email_address %}
                                             <span class="text-success">{{ oauth_status.status.email_address }}</span>
@@ -154,7 +188,11 @@
                                 </div>
                                 
                                 <div class="status-item">
-                                    <div class="status-label">Autenticación:</div>
+                                    <div class="status-label">
+                                        Autenticación:
+                                        <i class="fas fa-info-circle text-secondary opacity-25" data-bs-toggle="tooltip" 
+                                           title="Indica el estado de la autenticación OAuth con el servidor de correo. 'Autorizada': la conexión está activa. 'Token expirado': necesita renovar la autorización. 'No autorizada': no se ha configurado."></i>
+                                    </div>
                                     <div class="status-value">
                                         {% if oauth_status.status.oauth_authorized and oauth_status.status.oauth_token_valid %}
                                             <span class="badge bg-success">
@@ -171,6 +209,24 @@
                                         {% endif %}
                                     </div>
                                 </div>
+                                
+                                <div class="status-item mt-4 pt-2 border-top">
+                                    <div class="d-flex justify-content-between">
+                                        <a href="{% url 'configuracion' %}#correo" class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-cog me-1"></i> Editar configuración
+                                        </a>
+                                        
+                                        {% if oauth_status.status.oauth_authorized %}
+                                        <button class="btn btn-sm btn-outline-warning" id="btnReautorizar">
+                                            <i class="fas fa-sync-alt me-1"></i> Reautorizar
+                                        </button>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                
+                                <div class="alert alert-light mt-4 p-3 small">
+                                    <i class="fas fa-info-circle me-2"></i> La conexión al servidor de correo debe estar correctamente configurada para que el servicio de ingesta pueda funcionar.
+                                </div>
                             </div>
                         </div>
                     {% endif %}
@@ -181,7 +237,7 @@
             <div class="config-card">
                 <div class="config-card-header">
                     <h3><i class="fas fa-history"></i> Historial de Ejecuciones</h3>
-                    <a href="{% url 'historial_ingesta' %}" class="btn btn-sm btn-outline-primary">
+                    <a href="{% url 'ingesta_correo:historial_ingesta' %}" class="btn btn-sm btn-outline-primary">
                         <i class="fas fa-list"></i> Ver Todo
                     </a>
                 </div>
@@ -298,8 +354,8 @@
                         <ul class="mb-0">
                             <li>Configure el intervalo según la frecuencia con que recibe correos importantes.</li>
                             <li>Recomendamos entre 15 y 60 minutos para un balance óptimo.</li>
-                            <li>Cree <a href="{% url 'ingesta_correo_reglas' %}">reglas de filtrado</a> para procesar solo los correos relevantes.</li>
-                            <li>Verifique que la <a href="{% url 'configuracion' %}#correo">conexión OAuth</a> está activa y funcionando.</li>
+                            <li><a href="{% url 'ingesta_correo:reglas' %}">Configure reglas de filtrado</a> para procesar solo los correos relevantes.</li>
+                            <li>Verifique que la <a href="{% url 'configuracion' %}#correo">conexión al servidor</a> está activa y funcionando.</li>
                         </ul>
                     </div>
                     
@@ -403,6 +459,12 @@
 {% block extra_js %}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // Inicializar tooltips de Bootstrap
+        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+
         // Referencias a elementos DOM
         const toggleServicioBtn = document.getElementById('btnToggleServicio');
         const ejecutarAhoraBtn = document.getElementById('btnEjecutarAhora');
@@ -451,6 +513,20 @@
             refreshActivityBtn.addEventListener('click', function() {
                 fetchServiceStatus();
                 animateRefreshIcon(this);
+            });
+        }
+        
+        // Listener para botón de reautorizar
+        const btnReautorizar = document.getElementById('btnReautorizar');
+        if (btnReautorizar) {
+            btnReautorizar.addEventListener('click', function() {
+                // Cambiar estado visual del botón
+                this.disabled = true;
+                const originalText = this.innerHTML;
+                this.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Redirigiendo...';
+                
+                // Redirigir a la página de configuración de correo
+                window.location.href = "{% url 'configuracion' %}#correo";
             });
         }
         

@@ -1,0 +1,80 @@
+/* Estilos para el panel de administración de RegistroLogRegla */
+
+/* Estilo para los niveles de log */
+.field-nivel_display span {
+    font-weight: bold;
+    padding: 2px 6px;
+    border-radius: 3px;
+}
+
+/* Estilo para el mensaje corto */
+.field-mensaje_corto {
+    max-width: 400px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Estilo para los datos de contexto */
+.field-datos_contexto_display pre {
+    background-color: #f8f9fa;
+    padding: 10px;
+    border-radius: 4px;
+    border: 1px solid #dee2e6;
+    font-family: monospace;
+    font-size: 12px;
+    max-height: 300px;
+    overflow: auto;
+}
+
+/* Estilo para la jerarquía de fechas */
+.date-hierarchy {
+    background-color: #f8f9fa;
+    padding: 10px;
+    margin-bottom: 20px;
+    border-radius: 4px;
+}
+
+/* Estilo para los filtros */
+#changelist-filter h2 {
+    background-color: #f8f9fa;
+    padding: 8px;
+    border-radius: 4px;
+}
+
+/* Estilo para la tabla de listado */
+#changelist table {
+    border-collapse: collapse;
+    width: 100%;
+}
+
+#changelist table th {
+    background-color: #f8f9fa;
+    padding: 8px;
+    text-align: left;
+}
+
+#changelist table td {
+    padding: 8px;
+    border-bottom: 1px solid #dee2e6;
+}
+
+/* Estilo para el detalle de un registro */
+.field-timestamp {
+    font-family: monospace;
+}
+
+.field-tenant, .field-regla, .field-correo {
+    font-weight: bold;
+}
+
+/* Estilo para el mensaje completo en la vista de detalle */
+.field-mensaje {
+    white-space: pre-wrap;
+    background-color: #f8f9fa;
+    padding: 10px;
+    border-radius: 4px;
+    border: 1px solid #dee2e6;
+    font-family: monospace;
+    font-size: 12px;
+} 
