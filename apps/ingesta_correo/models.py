@@ -2,6 +2,37 @@ from django.db import models
 from django.utils import timezone
 from apps.tenants.models import Tenant
 
+# Función para generar la ruta de subida de archivos adjuntos con separación por tenant
+def adjunto_upload_path(instance, filename):
+    """
+    Genera la ruta para guardar los archivos adjuntos organizados por tenant.
+    
+    Args:
+        instance: Instancia de ArchivoAdjunto
+        filename: Nombre original del archivo
+        
+    Returns:
+        str: Ruta donde se guardará el archivo
+    """
+    try:
+        # Intentar obtener el tenant desde la instancia
+        if instance and hasattr(instance, 'correo') and instance.correo:
+            if hasattr(instance.correo, 'servicio') and instance.correo.servicio:
+                if hasattr(instance.correo.servicio, 'tenant') and instance.correo.servicio.tenant:
+                    tenant_id = instance.correo.servicio.tenant.id
+                    # Formato: adjuntos_correo/tenant_id/YYYY/MM/DD/filename
+                    return f'adjuntos_correo/tenant_{tenant_id}/{timezone.now().strftime("%Y/%m/%d")}/{filename}'
+    except Exception as e:
+        # En caso de error, registrar información de diagnóstico
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error al generar ruta para adjunto: {str(e)}")
+    
+    # Si no se puede obtener el tenant o hay algún error, usar una ruta temporal con timestamp
+    # para evitar colisiones
+    timestamp = timezone.now().strftime("%Y%m%d%H%M%S")
+    return f'adjuntos_correo/temp/{timezone.now().strftime("%Y/%m/%d")}/{timestamp}_{filename}'
+
 class ServicioIngesta(models.Model):
     tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE)
     nombre = models.CharField(max_length=100)
@@ -141,7 +172,7 @@ class ArchivoAdjunto(models.Model):
     nombre_archivo = models.CharField(max_length=255)
     tipo_contenido = models.CharField(max_length=100)
     tamaño = models.IntegerField()
-    archivo = models.FileField(upload_to='adjuntos_correo/%Y/%m/%d/', max_length=500)
+    archivo = models.FileField(upload_to=adjunto_upload_path, max_length=500)
     procesado = models.BooleanField(default=False)
     fecha_procesamiento = models.DateTimeField(null=True, blank=True)
     
@@ -151,6 +182,32 @@ class ArchivoAdjunto(models.Model):
     
     def __str__(self):
         return self.nombre_archivo
+        
+    def save(self, *args, **kwargs):
+        """Sobrescribe el método save para garantizar que los archivos se guarden con el tenant en la ruta."""
+        # Solo modificar la ruta si el archivo es nuevo y existe la relación completa
+        if not self.id and self.correo_id and hasattr(self, 'archivo'):
+            try:
+                if self.correo.servicio and self.correo.servicio.tenant:
+                    # Si el archivo ya se ha asignado pero no guardado aún
+                    if hasattr(self.archivo, 'file') and not self.archivo.name.startswith(f'adjuntos_correo/tenant_{self.correo.servicio.tenant.id}'):
+                        # Guardar el contenido con la ruta correcta
+                        from django.core.files.base import ContentFile
+                        tenant_id = self.correo.servicio.tenant.id
+                        fecha_actual = timezone.now().strftime("%Y/%m/%d")
+                        nombre = self.nombre_archivo
+                        ruta_adjunto = f'adjuntos_correo/tenant_{tenant_id}/{fecha_actual}/{nombre}'
+                        
+                        # Obtener el contenido del archivo actual
+                        contenido = self.archivo.read()
+                        # Guardar con la nueva ruta
+                        self.archivo.save(ruta_adjunto, ContentFile(contenido), save=False)
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Error al ajustar ruta de archivo adjunto: {str(e)}")
+                
+        super().save(*args, **kwargs)
 
 class LogActividad(models.Model):
     tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE)

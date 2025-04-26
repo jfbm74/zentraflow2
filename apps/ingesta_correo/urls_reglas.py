@@ -7,6 +7,8 @@ from .views_reglas import (
     ReglaCrearView,
     ReglaEditarView,
     ReglaEliminarView,
+    ReglaToggleView,
+    ReglaTestView,
     # Mantener las vistas de categorías como funciones
     categorias_list,
     categoria_create,
@@ -22,6 +24,8 @@ urlpatterns = [
     path('reglas/crear/', ReglaCrearView.as_view(), name='regla_crear'),
     path('reglas/editar/<int:regla_id>/', ReglaEditarView.as_view(), name='regla_editar'),
     path('reglas/eliminar/<int:regla_id>/', ReglaEliminarView.as_view(), name='regla_eliminar'),
+    path('reglas/<int:regla_id>/toggle/', ReglaToggleView.as_view(), name='regla_toggle'),
+    path('reglas/<int:regla_id>/test/', ReglaTestView.as_view(), name='regla_test'),
     
     # Vistas antiguas basadas en funciones (para retrocompatibilidad)
     path('reglas/detalles/<int:regla_id>/', ReglaEditarView.as_view(), name='regla_detail'),

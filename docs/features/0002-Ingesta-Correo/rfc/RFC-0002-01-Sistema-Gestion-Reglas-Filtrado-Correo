@@ -213,3 +213,39 @@ Para facilitar el desarrollo incremental y poder entregar valor rápidamente, se
 - Mantener compatibilidad hacia atrás entre fases
 - Documentar APIs y modelos para facilitar la integración con otros sistemas
 - Considerar la migración de datos si es necesario al evolucionar los modelos
+
+
+**Optimizacion del aplicativo para mejorar el redimiento**:
+El sistema enfrentará desafíos de rendimiento importantes cuando el volumen de correos procesados aumente significativamente a lo largo de los años. Analizando el código actual, puedo identificar varios puntos críticos:
+
+1.  Consultas de base de datos no optimizadas:
+
+-   En ReglaFiltradoService.aplicar_reglas() no hay límites en las consultas cuando procesa adjuntos con correo.adjuntos.all()
+
+-   El método ReglaFiltrado._obtener_valor_campo() hace múltiples queries para adjuntos sin usar prefetch_related
+
+1.  Almacenamiento de logs excesivo:
+
+-   El sistema registra logs detallados para cada evaluación en RegistroLogRegla, lo que generará muchos registros sin un mecanismo de purga
+
+1.  Falta de indexación adecuada:
+
+-   Aunque hay algunos índices en HistorialAplicacionRegla, otras tablas como CorreoIngesta y ArchivoAdjunto necesitan más índices para soportar consultas frecuentes
+
+1.  Procesamiento secuencial:
+
+-   El procesamiento de correos es secuencial en process_email_ingestion() sin paralelización
+
+1.  Almacenamiento de adjuntos:
+
+-   Todos los adjuntos se almacenan en el sistema de archivos, lo que puede saturar el almacenamiento
+
+Recomendaría:
+
+-   Implementar paginación y límites en todas las consultas
+
+-   Crear una estrategia de retención de datos para purgar logs y correos antiguos
+
+-   Añadir índices compuestos para campos frecuentemente consultados
+
+-   Considerar procesamiento asíncrono/paralelo para lotes grandes de correos

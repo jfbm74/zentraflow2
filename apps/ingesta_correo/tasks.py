@@ -223,8 +223,13 @@ def process_email_ingestion(servicio_id):
                                 )
                                 
                                 # Guardar el archivo en el campo FileField
+                                tenant_id = correo.servicio.tenant.id
+                                fecha_actual = timezone.now().strftime("%Y/%m/%d")
+                                ruta_adjunto = f'adjuntos_correo/tenant_{tenant_id}/{fecha_actual}/{filename}'
+                                
                                 with open(temp_file_path, 'rb') as f:
-                                    adjunto.archivo.save(filename, ContentFile(f.read()))
+                                    contenido = ContentFile(f.read())
+                                    adjunto.archivo.save(ruta_adjunto, contenido, save=True)
                                 
                                 # Incrementar contador
                                 archivos_procesados += 1
@@ -402,8 +407,13 @@ def process_email_ingestion(servicio_id):
                                 )
                                 
                                 # Guardar el archivo en el campo FileField
+                                tenant_id = correo.servicio.tenant.id
+                                fecha_actual = timezone.now().strftime("%Y/%m/%d")
+                                ruta_adjunto = f'adjuntos_correo/tenant_{tenant_id}/{fecha_actual}/{filename}'
+                                
                                 with open(temp_file_path, 'rb') as f:
-                                    adjunto.archivo.save(filename, ContentFile(f.read()))
+                                    contenido = ContentFile(f.read())
+                                    adjunto.archivo.save(ruta_adjunto, contenido, save=True)
                                 
                                 # Incrementar contador
                                 archivos_procesados += 1

@@ -22,6 +22,7 @@ from django.template.loader import render_to_string
 
 from apps.ingesta_correo.models import ReglaFiltrado, ServicioIngesta, CondicionRegla, CategoriaRegla, CorreoIngesta, HistorialAplicacionRegla
 from apps.ingesta_correo.services.regla_filtrado_service import ReglaFiltradoService
+from apps.ingesta_correo.services.regla_test_service import ReglaTestService
 from apps.tenants.utils import get_tenant_for_user
 from .forms import ReglaFiltradoForm, CondicionReglaInlineFormSet, CategoriaReglaForm
 
@@ -175,23 +176,34 @@ class ReglaEditarView(LoginRequiredMixin, UpdateView):
         messages.success(self.request, f'Regla "{regla.nombre}" actualizada correctamente.')
         return super().form_valid(form)
 
-class ReglaEliminarView(LoginRequiredMixin, DeleteView):
-    """Vista basada en clase para eliminar una regla."""
-    model = ReglaFiltrado
-    template_name = 'ingesta_correo/reglas/regla_confirm_delete.html'
-    success_url = reverse_lazy('ingesta_correo:reglas')
-    pk_url_kwarg = 'regla_id'
+class ReglaEliminarView(LoginRequiredMixin, View):
+    """Vista para eliminar una regla."""
     
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['active_menu'] = 'ingesta_correo'
-        context['active_submenu'] = 'reglas'
-        return context
-    
-    def delete(self, request, *args, **kwargs):
-        regla = self.get_object()
-        messages.success(request, f'Regla "{regla.nombre}" eliminada correctamente.')
-        return super().delete(request, *args, **kwargs)
+    def post(self, request, regla_id):
+        try:
+            # Verificar que la regla pertenezca al tenant del usuario
+            regla = get_object_or_404(ReglaFiltrado, 
+                id=regla_id, 
+                servicio__tenant=request.user.tenant
+            )
+            
+            # Eliminar la regla usando el servicio
+            ReglaFiltradoService.eliminar_regla(
+                regla_id=regla.id,
+                usuario=request.user
+            )
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'Regla "{regla.nombre}" eliminada correctamente'
+            })
+            
+        except Exception as e:
+            logger.error(f"Error al eliminar regla {regla_id}: {str(e)}")
+            return JsonResponse({
+                'success': False,
+                'message': f"Error al eliminar la regla: {str(e)}"
+            }, status=400)
 
 class ReglaFiltradoApiView(LoginRequiredMixin, View):
     """API para operaciones CRUD de reglas de filtrado."""
@@ -400,39 +412,34 @@ class ReglaFiltradoApiView(LoginRequiredMixin, View):
     def delete(self, request, regla_id):
         """
         Elimina una regla de filtrado.
-        
-        Args:
-            request: Solicitud HTTP
-            regla_id: ID de la regla a eliminar
-            
-        Returns:
-            JsonResponse con el resultado de la operación
         """
         try:
-            usuario = request.user
+            # Verificar que la regla pertenezca al tenant del usuario
+            regla = get_object_or_404(ReglaFiltrado, 
+                id=regla_id, 
+                servicio__tenant=request.user.tenant
+            )
             
-            # Eliminar regla usando el servicio
-            ReglaFiltradoService.eliminar_regla(regla_id, usuario)
+            # Guardar nombre para mensaje
+            nombre_regla = regla.nombre
             
-            # Devolver respuesta exitosa
+            # Eliminar la regla
+            ReglaFiltradoService.eliminar_regla(
+                regla_id=regla.id,
+                usuario=request.user
+            )
+            
             return JsonResponse({
                 'success': True,
-                'message': 'Regla eliminada correctamente.'
+                'message': f'Regla "{nombre_regla}" eliminada correctamente'
             })
-            
-        except ValidationError as e:
-            logger.warning(f"Error de validación al eliminar regla {regla_id}: {str(e)}")
-            return JsonResponse({
-                'success': False,
-                'message': str(e)
-            }, status=400)
             
         except Exception as e:
             logger.error(f"Error al eliminar regla {regla_id}: {str(e)}")
             return JsonResponse({
                 'success': False,
-                'message': f'Error al eliminar la regla: {str(e)}'
-            }, status=500)
+                'message': f"Error al eliminar la regla: {str(e)}"
+            })
 
 class ReglaEstadoView(LoginRequiredMixin, View):
     """Vista para cambiar el estado (activo/inactivo) de una regla."""
@@ -750,30 +757,39 @@ def regla_delete(request, regla_id):
     
     return JsonResponse({'success': False, 'message': 'Método no soportado.'})
 
-@login_required
-@csrf_protect
-def regla_toggle(request, regla_id):
-    """Vista para activar/desactivar una regla."""
-    tenant = get_tenant_for_user(request.user)
-    servicio = tenant.servicioingestaconfig.active_service if hasattr(tenant, 'servicioingestaconfig') else None
+class ReglaToggleView(LoginRequiredMixin, View):
+    """Vista para activar/desactivar una regla de filtrado."""
     
-    if not servicio:
-        return JsonResponse({'success': False, 'message': "No hay un servicio de ingesta activo configurado."})
-    
-    regla = get_object_or_404(ReglaFiltrado, id=regla_id, servicio=servicio)
-    
-    if request.method == 'POST':
-        regla.activa = not regla.activa
-        regla.modificado_por = request.user
-        regla.save()
-        
-        return JsonResponse({
-            'success': True, 
-            'activa': regla.activa,
-            'message': f'Regla "{regla.nombre}" {"activada" if regla.activa else "desactivada"} correctamente.'
-        })
-    
-    return JsonResponse({'success': False, 'message': 'Método no soportado.'})
+    def post(self, request, regla_id):
+        try:
+            # Obtener la regla verificando que pertenezca al tenant del usuario
+            regla = get_object_or_404(ReglaFiltrado, 
+                id=regla_id, 
+                servicio__tenant=request.user.tenant
+            )
+            
+            # Cambiar el estado usando el servicio
+            resultado = ReglaFiltradoService.cambiar_estado_regla(
+                regla_id=regla.id,
+                usuario=request.user,
+                activa=not regla.activa
+            )
+            
+            # Construir mensaje descriptivo
+            mensaje = f'Regla {"activada" if resultado.activa else "desactivada"} correctamente'
+            
+            return JsonResponse({
+                'success': True,
+                'message': mensaje,
+                'activo': resultado.activa
+            })
+            
+        except Exception as e:
+            logger.error(f"Error al cambiar estado de regla {regla_id}: {str(e)}")
+            return JsonResponse({
+                'success': False,
+                'message': f"Error al cambiar el estado de la regla: {str(e)}"
+            }, status=400)
 
 @login_required
 @csrf_protect
@@ -1038,3 +1054,13 @@ def batch_test(request):
         'correos': correos,
         'reglas': reglas
     })
+
+class ReglaTestView(View):
+    def post(self, request, regla_id):
+        regla = get_object_or_404(ReglaFiltrado, id=regla_id, tenant=request.tenant)
+        datos_prueba = request.POST.dict()
+        
+        servicio = ReglaTestService()
+        resultado = servicio.evaluar_regla_completa(regla, datos_prueba)
+        
+        return JsonResponse(resultado)
